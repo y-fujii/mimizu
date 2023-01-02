@@ -71,7 +71,7 @@ fn tangents_distance(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
     let mut s0: f32 = 0.0;
     for j in 0..ta.len() {
         for i in 0..tb.len() {
-            let s1 = f32::max(s0, f32::max(dp[i + 1], dp[i]) - penalty) + (Vec2::dot(ta[i], tb[j]) - 1.0);
+            let s1 = f32::max(s0, f32::max(dp[i + 1], dp[i]) - penalty) + (Vec2::dot(tb[i], ta[j]) - 1.0);
             s0 = mem::replace(&mut dp[i + 1], s1);
         }
         s0 = -f32::INFINITY;
