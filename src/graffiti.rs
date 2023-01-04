@@ -1,37 +1,15 @@
+use crate::template;
 use eframe::egui::Vec2;
 use std::*;
 
-const TEMPLATE_STROKES: [(char, &[u8]); 26] = [
-    ('A', b"\x00\x26\x40"),
-    ('B', b"\x06\x00\x05\x16\x36\x45\x44\x33\x42\x41\x30\x10"),
-    ('C', b"\x46\x16\x05\x01\x10\x40"),
-    ('D', b"\x06\x00\x05\x16\x26\x44\x42\x20\x10"),
-    ('E', b"\x46\x16\x05\x04\x13\x02\x01\x10\x40"),
-    ('F', b"\x46\x06\x00"),
-    ('G', b"\x46\x16\x05\x01\x10\x30\x41\x42\x23\x43"),
-    ('H', b"\x06\x00\x01\x12\x32\x41\x40"),
-    ('I', b"\x06\x00"),
-    ('J', b"\x46\x41\x30\x10\x01\x03"),
-    ('K', b"\x46\x12\x02\x04\x14\x40"),
-    ('L', b"\x06\x00\x40"),
-    ('M', b"\x00\x06\x23\x46\x40"),
-    ('N', b"\x00\x06\x40\x46"),
-    ('O', b"\x26\x16\x05\x01\x10\x30\x41\x45\x36\x26"),
-    ('P', b"\x06\x00\x05\x16\x36\x45\x34\x14"),
-    ('Q', b"\x36\x16\x05\x01\x10\x30\x41\x45\x36\x26\x46"),
-    ('R', b"\x06\x00\x05\x16\x36\x45\x44\x33\x23\x40"),
-    ('S', b"\x46\x16\x05\x04\x13\x33\x42\x41\x30\x00"),
-    ('T', b"\x06\x46\x40"),
-    ('U', b"\x06\x01\x10\x30\x41\x46"),
-    ('V', b"\x06\x10\x26\x46"),
-    ('W', b"\x06\x00\x23\x40\x46"),
-    ('X', b"\x06\x32\x42\x44\x34\x00"),
-    ('Y', b"\x06\x13\x33\x46\x30\x10\x12\x42"),
-    ('Z', b"\x06\x46\x00\x40"),
-];
-
 pub struct Engine {
-    templates: Vec<(char, Vec<Vec2>)>,
+    alphabets: Vec<(char, Vec<Vec2>)>,
+    numbers: Vec<(char, Vec<Vec2>)>,
+    symbols: Vec<(char, Vec<Vec2>)>,
+    pub tap_tolerance: f32,
+    pub mode_number: bool,
+    pub next_symbol: bool,
+    pub next_caps: bool,
 }
 
 fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
@@ -44,10 +22,12 @@ fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
     dst
 }
 
-fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
-    let len: f32 = (1..stroke.len()).map(|i| (stroke[i] - stroke[i - 1]).length()).sum();
+fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> (Vec<Vec2>, f32) {
+    let len: f32 = (1..stroke.len())
+        .map(|i| (stroke[i] - stroke[i - 1]).length())
+        .sum();
     if len <= 0.0 {
-        return Vec::new();
+        return (Vec::new(), 0.0);
     }
 
     let mut dst = Vec::new();
@@ -63,10 +43,10 @@ fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
             j += 1;
         }
     }
-    dst
+    (dst, len)
 }
 
-// tangents_similarity(ta, tb) == tangents_similarity(tb, ta).
+// f(a, b) == f(b, a), f(a, a) == 1, -1 <= f(a, b) <= 1.
 fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
     let mut dps = vec![(0.0, -f32::INFINITY); tb.len() + 1];
     let mut dp0 = (0.5 * Vec2::dot(tb[0], ta[0]), 0.0);
@@ -85,32 +65,92 @@ fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
 }
 
 impl Engine {
-    pub fn new() -> Self {
+    pub fn new(tap_tolerance: f32) -> Self {
+        let n = 64;
         Engine {
-            templates: TEMPLATE_STROKES
+            alphabets: template::ALPHABETS
                 .iter()
-                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), 64)))
+                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
                 .collect(),
+            numbers: template::NUMBERS
+                .iter()
+                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
+                .collect(),
+            symbols: template::SYMBOLS
+                .iter()
+                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
+                .collect(),
+            tap_tolerance: tap_tolerance,
+            mode_number: false,
+            next_symbol: false,
+            next_caps: false,
         }
     }
 
-    pub fn classify_2d(&self, stroke: &Vec<Vec2>) -> Option<char> {
-        let input = tangents_from_stroke(stroke, self.templates[0].1.len());
-        if input.is_empty() {
+    pub fn classify_2d(&mut self, stroke: &Vec<Vec2>) -> Option<char> {
+        if stroke.is_empty() {
             return None;
         }
+        let (input, len) = tangents_from_stroke(stroke, self.alphabets[0].1.len());
+        if len <= self.tap_tolerance {
+            if self.next_symbol {
+                self.next_symbol = false;
+                return Some('.');
+            } else {
+                self.next_symbol = true;
+                return None;
+            }
+        }
+
+        let templates = if self.next_symbol {
+            &self.symbols
+        } else {
+            if self.mode_number {
+                &self.numbers
+            } else {
+                &self.alphabets
+            }
+        };
 
         let mut best_letter = None;
         let mut best_sim = 0.0;
-        for (letter, template) in self.templates.iter() {
+        for (letter, template) in templates.iter() {
             let sim = tangents_similarity(&input, &template, 0.25);
             if sim > best_sim {
                 best_sim = sim;
                 best_letter = Some(*letter);
             }
-            eprintln!("{}: {}", letter, sim);
         }
 
-        best_letter
+        match best_letter {
+            Some('N') => {
+                self.mode_number = true;
+                self.next_symbol = false;
+                self.next_caps = false;
+                None
+            }
+            Some('A') => {
+                self.mode_number = false;
+                self.next_symbol = false;
+                self.next_caps = false;
+                None
+            }
+            Some('C') => {
+                self.next_symbol = false;
+                self.next_caps = !self.next_caps;
+                None
+            }
+            Some(c) => {
+                let c = if self.next_caps {
+                    c.to_ascii_uppercase()
+                } else {
+                    c
+                };
+                self.next_symbol = false;
+                self.next_caps = false;
+                Some(c)
+            }
+            None => None,
+        }
     }
 }
