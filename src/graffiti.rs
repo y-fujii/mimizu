@@ -66,17 +66,22 @@ fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
     dst
 }
 
-fn tangents_distance(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
-    let mut dp = vec![-f32::INFINITY; tb.len() + 1];
-    let mut s0: f32 = 0.0;
-    for j in 0..ta.len() {
-        for i in 0..tb.len() {
-            let s1 = f32::max(s0, f32::max(dp[i + 1], dp[i]) - penalty) + (Vec2::dot(tb[i], ta[j]) - 1.0);
-            s0 = mem::replace(&mut dp[i + 1], s1);
+// tangents_similarity(ta, tb) == tangents_similarity(tb, ta).
+fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
+    let mut dps = vec![(0.0, -f32::INFINITY); tb.len() + 1];
+    let mut dp0 = (0.5 * Vec2::dot(tb[0], ta[0]), 0.0);
+    for i in 0..ta.len() {
+        for j in 0..tb.len() {
+            let s = Vec2::dot(tb[j], ta[i]);
+            let v0 = dp0.1 + 0.5 * (dp0.0 + s);
+            let v1 = dps[j + 1].1 + 0.25 * (dps[j + 1].0 + s) - penalty;
+            let v2 = dps[j + 0].1 + 0.25 * (dps[j + 0].0 + s) - penalty;
+            dp0 = mem::replace(&mut dps[j + 1], (s, v0.max(v1).max(v2)));
         }
-        s0 = -f32::INFINITY;
+        dp0 = (0.0, -f32::INFINITY);
     }
-    *dp.last().unwrap() / (2.0 * cmp::max(ta.len(), tb.len()) as f32)
+    let v = dps.last().unwrap().1 + 0.5 * Vec2::dot(*tb.last().unwrap(), *ta.last().unwrap());
+    v / cmp::max(ta.len(), tb.len()) as f32
 }
 
 impl Engine {
@@ -96,14 +101,14 @@ impl Engine {
         }
 
         let mut best_letter = None;
-        let mut best_score = -0.25;
+        let mut best_sim = 0.0;
         for (letter, template) in self.templates.iter() {
-            let score = tangents_distance(&input, &template, 0.25);
-            if score > best_score {
-                best_score = score;
+            let sim = tangents_similarity(&input, &template, 0.25);
+            if sim > best_sim {
+                best_sim = sim;
                 best_letter = Some(*letter);
             }
-            eprintln!("{}: {}", letter, score);
+            eprintln!("{}: {}", letter, sim);
         }
 
         best_letter
