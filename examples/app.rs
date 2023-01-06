@@ -51,7 +51,7 @@ impl eframe::App for App {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
                 self.stroke.push(pointer_pos - origin);
             } else if !self.stroke.is_empty() {
-                let stroke = self.stroke.iter().map(|v| [v.x, -v.y]).collect();
+                let stroke: Vec<_> = self.stroke.iter().map(|v| [v.x, -v.y]).collect();
                 let now = time::Instant::now();
                 self.letter = self.recognizer.recognize(&stroke);
                 println!("{:} ms", now.elapsed().as_millis());

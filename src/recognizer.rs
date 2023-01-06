@@ -96,7 +96,7 @@ impl Recognizer {
         }
     }
 
-    pub fn recognize(&mut self, stroke: &Vec<Vec2>) -> Option<char> {
+    pub fn recognize(&mut self, stroke: &[Vec2]) -> Option<char> {
         if stroke.is_empty() {
             return None;
         }
