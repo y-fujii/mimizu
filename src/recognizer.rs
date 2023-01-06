@@ -1,8 +1,9 @@
 use crate::template;
-use eframe::egui::Vec2;
 use std::*;
 
-pub struct Engine {
+pub type Vec2 = [f32; 2];
+
+pub struct Recognizer {
     alphabets: Vec<(char, Vec<Vec2>)>,
     numbers: Vec<(char, Vec<Vec2>)>,
     symbols: Vec<(char, Vec<Vec2>)>,
@@ -12,19 +13,36 @@ pub struct Engine {
     pub next_caps: bool,
 }
 
+fn sub(x: Vec2, y: Vec2) -> Vec2 {
+    [x[0] - y[0], x[1] - y[1]]
+}
+
+fn dot(x: Vec2, y: Vec2) -> f32 {
+    x[0] * y[0] + x[1] * y[1]
+}
+
+fn norm(x: Vec2) -> f32 {
+    f32::sqrt(dot(x, x))
+}
+
+fn normalize(x: Vec2) -> Vec2 {
+    let n = norm(x);
+    [x[0] / n, x[1] / n]
+}
+
 fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
     let mut dst = Vec::new();
     for byte in bytes.iter() {
         let x = (byte >> 4) as f32;
         let y = (byte & 0xf) as f32;
-        dst.push(Vec2::new(x, -y));
+        dst.push([x, y]);
     }
     dst
 }
 
 fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> (Vec<Vec2>, f32) {
     let len: f32 = (1..stroke.len())
-        .map(|i| (stroke[i] - stroke[i - 1]).length())
+        .map(|i| norm(sub(stroke[i], stroke[i - 1])))
         .sum();
     if len <= 0.0 {
         return (Vec::new(), 0.0);
@@ -36,10 +54,10 @@ fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> (Vec<Vec2>, f32) {
     let mut j = 0;
     while j < n {
         if n as f32 * pos <= (j as f32 + 0.5) * len {
-            pos += (stroke[i + 1] - stroke[i]).length();
+            pos += norm(sub(stroke[i + 1], stroke[i]));
             i += 1;
         } else {
-            dst.push((stroke[i] - stroke[i - 1]).normalized());
+            dst.push(normalize(sub(stroke[i], stroke[i - 1])));
             j += 1;
         }
     }
@@ -49,10 +67,10 @@ fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> (Vec<Vec2>, f32) {
 // f(a, b) == f(b, a), f(a, a) == 1, -1 <= f(a, b) <= 1.
 fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
     let mut dps = vec![(0.0, -f32::INFINITY); tb.len() + 1];
-    let mut dp0 = (0.5 * Vec2::dot(tb[0], ta[0]), 0.0);
+    let mut dp0 = (0.5 * dot(tb[0], ta[0]), 0.0);
     for i in 0..ta.len() {
         for j in 0..tb.len() {
-            let s = Vec2::dot(tb[j], ta[i]);
+            let s = dot(tb[j], ta[i]);
             let v0 = dp0.1 + 0.5 * (dp0.0 + s);
             let v1 = dps[j + 1].1 + 0.25 * (dps[j + 1].0 + s) - penalty;
             let v2 = dps[j + 0].1 + 0.25 * (dps[j + 0].0 + s) - penalty;
@@ -60,26 +78,17 @@ fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
         }
         dp0 = (0.0, -f32::INFINITY);
     }
-    let v = dps.last().unwrap().1 + 0.5 * Vec2::dot(*tb.last().unwrap(), *ta.last().unwrap());
+    let v = dps.last().unwrap().1 + 0.5 * dot(*tb.last().unwrap(), *ta.last().unwrap());
     v / cmp::max(ta.len(), tb.len()) as f32
 }
 
-impl Engine {
+impl Recognizer {
     pub fn new(tap_tolerance: f32) -> Self {
-        let n = 64;
-        Engine {
-            alphabets: template::ALPHABETS
-                .iter()
-                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
-                .collect(),
-            numbers: template::NUMBERS
-                .iter()
-                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
-                .collect(),
-            symbols: template::SYMBOLS
-                .iter()
-                .map(|(c, s)| (*c, tangents_from_stroke(&stroke_from_bytes(s), n).0))
-                .collect(),
+        let f = |(c, s): &(char, &[u8])| (*c, tangents_from_stroke(&stroke_from_bytes(s), 64).0);
+        Recognizer {
+            alphabets: template::ALPHABETS.iter().map(f).collect(),
+            numbers: template::NUMBERS.iter().map(f).collect(),
+            symbols: template::SYMBOLS.iter().map(f).collect(),
             tap_tolerance: tap_tolerance,
             mode_number: false,
             next_symbol: false,
@@ -87,19 +96,19 @@ impl Engine {
         }
     }
 
-    pub fn classify_2d(&mut self, stroke: &Vec<Vec2>) -> Option<char> {
+    pub fn recognize(&mut self, stroke: &Vec<Vec2>) -> Option<char> {
         if stroke.is_empty() {
             return None;
         }
         let (input, len) = tangents_from_stroke(stroke, self.alphabets[0].1.len());
         if len <= self.tap_tolerance {
-            if self.next_symbol {
+            return if self.next_symbol {
                 self.next_symbol = false;
-                return Some('.');
+                Some('.')
             } else {
                 self.next_symbol = true;
-                return None;
-            }
+                None
+            };
         }
 
         let templates = if self.next_symbol {
