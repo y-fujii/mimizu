@@ -2,7 +2,7 @@ use eframe::egui;
 use std::*;
 
 struct App {
-    recognizer: graffiti::Recognizer,
+    recognizer: graffiti::GraffitiRecognizer,
     stroke: Vec<egui::Vec2>,
     letter: Option<char>,
 }
@@ -10,7 +10,7 @@ struct App {
 impl App {
     fn new() -> Self {
         App {
-            recognizer: graffiti::Recognizer::new(16.0),
+            recognizer: graffiti::GraffitiRecognizer::new(16.0),
             stroke: Vec::new(),
             letter: None,
         }

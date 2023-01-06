@@ -1,4 +1,8 @@
+mod graffiti;
 mod recognizer;
-mod template;
+mod templates;
+#[cfg(test)]
+mod tests;
 
-pub use recognizer::Recognizer;
+pub use crate::graffiti::*;
+pub use crate::recognizer::*;
