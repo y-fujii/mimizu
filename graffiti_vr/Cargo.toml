@@ -1,0 +1,12 @@
+[package]
+name = "graffiti_vr"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+cc = "*"
+
+[dependencies]
+nalgebra = "*"
+eframe = "*"
+graffiti = { path = "../graffiti" }
