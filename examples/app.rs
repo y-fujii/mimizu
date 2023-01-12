@@ -22,24 +22,19 @@ impl eframe::App for App {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             egui::Grid::new("grid").show(ui, |ui| {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Recognized letter:")
+                    ui.label("Letter:")
                 });
                 ui.label(format!("{:?}", self.letter));
                 ui.end_row();
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Number mode:")
+                    ui.label("Mode:")
                 });
-                ui.label(format!("{:?}", self.recognizer.mode_number));
+                ui.label(format!("{:?}", self.recognizer.mode()));
                 ui.end_row();
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Symbol next:")
+                    ui.label("Modifier:")
                 });
-                ui.label(format!("{:?}", self.recognizer.next_symbol));
-                ui.end_row();
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Caps next:")
-                });
-                ui.label(format!("{:?}", self.recognizer.next_caps));
+                ui.label(format!("{:?}", self.recognizer.modifier()));
                 ui.end_row();
             });
         });

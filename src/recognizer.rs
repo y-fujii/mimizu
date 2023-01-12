@@ -1,36 +1,36 @@
 use std::*;
 
-pub type Vec2 = [f32; 2];
+pub(crate) type Vec2 = [f32; 2];
 
 pub struct Recognizer {
     n_samples: usize,
     templates: Vec<Vec<Vec2>>,
 }
 
-fn sub(x: Vec2, y: Vec2) -> Vec2 {
+pub(crate) fn sub(x: Vec2, y: Vec2) -> Vec2 {
     [x[0] - y[0], x[1] - y[1]]
 }
 
-fn dot(x: Vec2, y: Vec2) -> f32 {
+pub(crate) fn dot(x: Vec2, y: Vec2) -> f32 {
     x[0] * y[0] + x[1] * y[1]
 }
 
-fn norm(x: Vec2) -> f32 {
+pub(crate) fn norm(x: Vec2) -> f32 {
     f32::sqrt(dot(x, x))
 }
 
-fn normalize(x: Vec2) -> Vec2 {
+pub(crate) fn normalize(x: Vec2) -> Vec2 {
     let n = norm(x);
     [x[0] / n, x[1] / n]
 }
 
-pub fn stroke_len(stroke: &[Vec2]) -> f32 {
+pub(crate) fn stroke_len(stroke: &[Vec2]) -> f32 {
     (1..stroke.len())
         .map(|i| norm(sub(stroke[i], stroke[i - 1])))
         .sum()
 }
 
-pub fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
+pub(crate) fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
     let len = stroke_len(stroke);
     if len <= 0.0 {
         return Vec::new();
@@ -53,7 +53,7 @@ pub fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
 }
 
 // f(a, b) == f(b, a), f(a, a) == 1, -1 <= f(a, b) <= 1.
-pub fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
+pub(crate) fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
     let mut dps = vec![(0.0, -f32::INFINITY); tb.len() + 1];
     let mut dp0 = (0.0, 0.0);
     for i in 0..ta.len() {

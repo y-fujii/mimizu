@@ -12,7 +12,15 @@ fn test_tangents_similarity() {
     assert_eq!(tangents_similarity(&[ex, ey], &[ey, ey], 0.0), 5.0 / 8.0);
     assert_eq!(tangents_similarity(&[ex, ex, ey], &[ex, ey, ey], 0.0), 1.0);
     assert_eq!(
+        tangents_similarity(&[ex, ex, ex, ey], &[ex, ey, ey, ey], 0.0),
+        1.0
+    );
+    assert_eq!(
         tangents_similarity(&[ex, ex, ey], &[ex, ey, ey], 1.0),
         2.0 / 3.0
+    );
+    assert_eq!(
+        tangents_similarity(&[ex, ex, ey], &[ex, ey, ey], 0.25),
+        2.5 / 3.0
     );
 }

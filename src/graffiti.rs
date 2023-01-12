@@ -2,17 +2,29 @@ use crate::recognizer::*;
 use crate::templates;
 use std::*;
 
-pub struct GraffitiRecognizer {
-    recognizer_alphabets: Recognizer,
-    recognizer_numbers: Recognizer,
-    recognizer_symbols: Recognizer,
-    pub tap_tolerance: f32,
-    pub mode_number: bool,
-    pub next_symbol: bool,
-    pub next_caps: bool,
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum GraffitiMode {
+    Alphabet,
+    Number,
 }
 
-pub fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum GraffitiModifier {
+    None,
+    Symbol,
+    Caps,
+}
+
+pub struct GraffitiRecognizer {
+    alphabets: Recognizer,
+    numbers: Recognizer,
+    symbols: Recognizer,
+    tap_tolerance: f32,
+    mode: GraffitiMode,
+    modifier: GraffitiModifier,
+}
+
+pub(crate) fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
     let mut dst = Vec::new();
     for byte in bytes.iter() {
         let x = (byte >> 4) as f32;
@@ -25,27 +37,26 @@ pub fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
 impl GraffitiRecognizer {
     pub fn new(tap_tolerance: f32) -> Self {
         let n = 64;
-        let mut recognizer_alphabets = Recognizer::new(n);
+        let mut alphabets = Recognizer::new(n);
         for (_, t) in templates::ALPHABETS.iter() {
-            recognizer_alphabets.add_template(&stroke_from_bytes(t));
+            alphabets.add_template(&stroke_from_bytes(t));
         }
-        let mut recognizer_numbers = Recognizer::new(n);
+        let mut numbers = Recognizer::new(n);
         for (_, t) in templates::NUMBERS.iter() {
-            recognizer_numbers.add_template(&stroke_from_bytes(t));
+            numbers.add_template(&stroke_from_bytes(t));
         }
-        let mut recognizer_symbols = Recognizer::new(n);
+        let mut symbols = Recognizer::new(n);
         for (_, t) in templates::SYMBOLS.iter() {
-            recognizer_symbols.add_template(&stroke_from_bytes(t));
+            symbols.add_template(&stroke_from_bytes(t));
         }
 
         Self {
-            recognizer_alphabets,
-            recognizer_numbers,
-            recognizer_symbols,
+            alphabets,
+            numbers,
+            symbols,
             tap_tolerance,
-            mode_number: false,
-            next_symbol: false,
-            next_caps: false,
+            mode: GraffitiMode::Alphabet,
+            modifier: GraffitiModifier::None,
         }
     }
 
@@ -53,57 +64,62 @@ impl GraffitiRecognizer {
         if stroke.is_empty() {
             return None;
         }
+
         if stroke_len(stroke) <= self.tap_tolerance {
-            return if self.next_symbol {
-                self.next_symbol = false;
-                Some('.')
-            } else {
-                self.next_symbol = true;
-                None
+            return match self.modifier {
+                GraffitiModifier::Symbol => {
+                    self.modifier = GraffitiModifier::None;
+                    Some('.')
+                }
+                _ => {
+                    self.modifier = GraffitiModifier::Symbol;
+                    None
+                }
             };
         }
 
-        let (template, recognizer) = if self.next_symbol {
-            (&templates::SYMBOLS[..], &self.recognizer_symbols)
-        } else {
-            if self.mode_number {
-                (&templates::NUMBERS[..], &self.recognizer_numbers)
-            } else {
-                (&templates::ALPHABETS[..], &self.recognizer_alphabets)
-            }
+        let (recognizer, template): (_, &[_]) = match self.modifier {
+            GraffitiModifier::Symbol => (&self.symbols, &templates::SYMBOLS),
+            _ => match self.mode {
+                GraffitiMode::Alphabet => (&self.alphabets, &templates::ALPHABETS),
+                GraffitiMode::Number => (&self.numbers, &templates::NUMBERS),
+            },
+        };
+        let Some(i) = recognizer.recognize(stroke) else {
+            return None;
         };
 
-        let letter = recognizer.recognize(stroke).map(|i| template[i].0);
-
-        match letter {
-            Some('N') => {
-                self.mode_number = true;
-                self.next_symbol = false;
-                self.next_caps = false;
+        match template[i].0 {
+            'N' => {
+                self.mode = GraffitiMode::Number;
+                self.modifier = GraffitiModifier::None;
                 None
             }
-            Some('A') => {
-                self.mode_number = false;
-                self.next_symbol = false;
-                self.next_caps = false;
+            'A' => {
+                self.mode = GraffitiMode::Alphabet;
+                self.modifier = GraffitiModifier::None;
                 None
             }
-            Some('C') => {
-                self.next_symbol = false;
-                self.next_caps = !self.next_caps;
+            'C' => {
+                self.modifier = GraffitiModifier::Caps;
                 None
             }
-            Some(c) => {
-                let c = if self.next_caps {
-                    c.to_ascii_uppercase()
-                } else {
-                    c
+            c => {
+                let c = match self.modifier {
+                    GraffitiModifier::Caps => c.to_ascii_uppercase(),
+                    _ => c,
                 };
-                self.next_symbol = false;
-                self.next_caps = false;
+                self.modifier = GraffitiModifier::None;
                 Some(c)
             }
-            None => None,
         }
+    }
+
+    pub fn mode(&self) -> GraffitiMode {
+        self.mode
+    }
+
+    pub fn modifier(&self) -> GraffitiModifier {
+        self.modifier
     }
 }
