@@ -7,7 +7,7 @@ type Matrix3 = nalgebra::Matrix3<f32>;
 type Matrix2x3 = nalgebra::Matrix2x3<f32>;
 type Matrix3x4 = nalgebra::Matrix3x4<f32>;
 
-pub struct GraffitiVr {
+pub struct StrokeProjector {
     stroke: Vec<Vector3>,
     ez_sum: Vector3,
     head_ey_sum: Vector3,
@@ -62,9 +62,9 @@ pub(crate) fn project_to_plane(stroke3: &[Vector3], up: Vector3, front: Vector3)
     stroke2
 }
 
-impl GraffitiVr {
+impl StrokeProjector {
     pub fn new() -> Self {
-        GraffitiVr {
+        StrokeProjector {
             stroke: Vec::new(),
             ez_sum: num_traits::Zero::zero(),
             head_ey_sum: num_traits::Zero::zero(),

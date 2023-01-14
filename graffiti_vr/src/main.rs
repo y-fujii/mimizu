@@ -1,16 +1,17 @@
 #![windows_subsystem = "windows"]
 
-mod graffiti_vr;
 mod openvr;
+mod stroke_projector;
 use eframe::egui;
 use std::*;
+use stroke_projector::StrokeProjector;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
 struct Model {
     is_finished: bool,
     error: Option<String>,
-    graffiti_vr: [graffiti_vr::GraffitiVr; 2],
+    graffiti_vr: [StrokeProjector; 2],
     strokes: collections::VecDeque<Vec<Vector2>>,
 }
 
@@ -44,10 +45,7 @@ impl eframe::App for App {
         {
             let mut model = self.model.lock().unwrap();
             error = model.error.clone();
-            current_strokes = [
-                model.graffiti_vr[0].stroke(),
-                model.graffiti_vr[1].stroke(),
-            ];
+            current_strokes = [model.graffiti_vr[0].stroke(), model.graffiti_vr[1].stroke()];
             stroke = model.strokes.pop_front();
         }
 
@@ -186,7 +184,7 @@ fn main() {
     let model = sync::Arc::new(sync::Mutex::new(Model {
         is_finished: false,
         error: None,
-        graffiti_vr: [graffiti_vr::GraffitiVr::new(), graffiti_vr::GraffitiVr::new()],
+        graffiti_vr: [StrokeProjector::new(), StrokeProjector::new()],
         strokes: collections::VecDeque::new(),
     }));
     let vr_thread = rc::Rc::new(cell::Cell::new(None));
