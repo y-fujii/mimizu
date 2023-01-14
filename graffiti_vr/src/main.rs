@@ -11,7 +11,7 @@ type Vector2 = nalgebra::Vector2<f32>;
 struct Model {
     is_finished: bool,
     error: Option<String>,
-    graffiti_vr: [StrokeProjector; 2],
+    projector: [StrokeProjector; 2],
     strokes: collections::VecDeque<Vec<Vector2>>,
 }
 
@@ -45,7 +45,7 @@ impl eframe::App for App {
         {
             let mut model = self.model.lock().unwrap();
             error = model.error.clone();
-            current_strokes = [model.graffiti_vr[0].stroke(), model.graffiti_vr[1].stroke()];
+            current_strokes = [model.projector[0].stroke(), model.projector[1].stroke()];
             stroke = model.strokes.pop_front();
         }
 
@@ -164,12 +164,12 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
                 if next_button {
                     let pose = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
                     let head = poses[0].device_to_absolute_tracking.to_nalgebra();
-                    model.graffiti_vr[i].feed(&pose, &head);
+                    model.projector[i].feed(&pose, &head);
                 }
                 if (prev_buttons[i], next_button) == (true, false) {
-                    let stroke = model.graffiti_vr[i].stroke();
+                    let stroke = model.projector[i].stroke();
                     model.strokes.push_back(stroke);
-                    model.graffiti_vr[i].clear();
+                    model.projector[i].clear();
                 }
                 prev_buttons[i] = next_button;
             }
@@ -184,7 +184,7 @@ fn main() {
     let model = sync::Arc::new(sync::Mutex::new(Model {
         is_finished: false,
         error: None,
-        graffiti_vr: [StrokeProjector::new(), StrokeProjector::new()],
+        projector: [StrokeProjector::new(), StrokeProjector::new()],
         strokes: collections::VecDeque::new(),
     }));
     let vr_thread = rc::Rc::new(cell::Cell::new(None));
