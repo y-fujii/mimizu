@@ -9,8 +9,8 @@ type Matrix3x4 = nalgebra::Matrix3x4<f32>;
 
 pub struct StrokeProjector {
     stroke: Vec<Vector3>,
-    ey_sum: Vector3,
-    ez_sum: Vector3,
+    hand: Matrix3x4,
+    head: Matrix3x4,
 }
 
 pub(crate) fn project_to_plane(stroke3: &[Vector3], up: Vector3, front: Vector3) -> Vec<Vector2> {
@@ -65,26 +65,27 @@ impl StrokeProjector {
     pub fn new() -> Self {
         StrokeProjector {
             stroke: Vec::new(),
-            ey_sum: num_traits::Zero::zero(),
-            ez_sum: num_traits::Zero::zero(),
+            hand: num_traits::Zero::zero(),
+            head: num_traits::Zero::zero(),
         }
     }
 
     pub fn clear(&mut self) {
         self.stroke.clear();
-        self.ey_sum = num_traits::Zero::zero();
-        self.ez_sum = num_traits::Zero::zero();
+        self.hand = num_traits::Zero::zero();
+        self.head = num_traits::Zero::zero();
     }
 
     pub fn feed(&mut self, hand: &Matrix3x4, head: &Matrix3x4) {
-        let ew = Vector4::new(0.0, 0.0, 0.0, 1.0);
-        self.stroke.push(hand * ew);
-        self.ey_sum += head * Vector4::y();
-        self.ez_sum += (head + hand) * Vector4::z() + (head - hand) * ew;
+        self.stroke.push(hand * Vector4::new(0.0, 0.0, 0.0, 1.0));
+        self.hand += hand;
+        self.head += head;
     }
 
     pub fn stroke(&self) -> Vec<Vector2> {
-        let up = self.stroke.len() as f32 * Vector3::y() + self.ey_sum;
-        project_to_plane(&self.stroke, up, self.ez_sum)
+        let ey = self.head * Vector4::y() + self.stroke.len() as f32 * Vector3::y();
+        let ez = self.head * Vector4::new(0.0, 0.0, 1.0, 1.0)
+            + self.hand * Vector4::new(0.0, 0.0, 1.0, -1.0);
+        project_to_plane(&self.stroke, ey, ez)
     }
 }
