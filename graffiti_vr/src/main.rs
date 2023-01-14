@@ -1,19 +1,17 @@
+#![windows_subsystem = "windows"]
+
+mod graffiti_vr;
 mod openvr;
-mod three;
 use eframe::egui;
 use std::*;
 
 type Vector2 = nalgebra::Vector2<f32>;
-type Vector3 = nalgebra::Vector3<f32>;
-type Vector4 = nalgebra::Vector4<f32>;
 
-#[derive(Default)]
 struct Model {
     is_finished: bool,
     error: Option<String>,
-    current_stroke: [Vec<Vector3>; 2],
-    current_direction: [Vector3; 2],
-    strokes: collections::VecDeque<(Vector3, Vec<Vector3>)>,
+    graffiti_vr: [graffiti_vr::GraffitiVr; 2],
+    strokes: collections::VecDeque<Vec<Vector2>>,
 }
 
 struct App {
@@ -40,25 +38,22 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        // XXX
         let error;
-        let current_stroke;
-        let current_direction;
+        let current_strokes;
         let stroke;
         {
             let mut model = self.model.lock().unwrap();
             error = model.error.clone();
-            current_stroke = model.current_stroke.clone();
-            current_direction = model.current_direction.clone();
+            current_strokes = [
+                model.graffiti_vr[0].stroke(),
+                model.graffiti_vr[1].stroke(),
+            ];
             stroke = model.strokes.pop_front();
         }
 
-        let up = Vector3::new(0.0, 1.0, 0.0);
-
-        if let Some((dir, stroke3)) = stroke {
-            let stroke2 = three::project_to_plane(&stroke3, up, dir);
-            let stroke2: Vec<_> = stroke2.iter().map(|v| [v[0], v[1]]).collect();
-            match self.recognizer.recognize(&stroke2) {
+        if let Some(stroke) = stroke {
+            let stroke: Vec<_> = stroke.iter().map(|v| [v[0], v[1]]).collect();
+            match self.recognizer.recognize(&stroke) {
                 Some('\x08') => {
                     if self.cursor > 0 {
                         self.cursor -= 1;
@@ -119,15 +114,13 @@ impl eframe::App for App {
             let r_min = Vector2::new(response.rect.min.x, response.rect.min.y);
             let r_max = Vector2::new(response.rect.max.x, response.rect.max.y);
 
-            for i in 0..2 {
-                if current_stroke[i].len() < 2 {
+            for stroke in current_strokes.iter() {
+                if stroke.len() < 2 {
                     continue;
                 }
-                let stroke2 = three::project_to_plane(&current_stroke[i], up, current_direction[i]);
-
                 let mut s_min = Vector2::repeat(f32::INFINITY);
                 let mut s_max = Vector2::repeat(-f32::INFINITY);
-                for v in stroke2.iter() {
+                for v in stroke.iter() {
                     let v = v2_invert_y(*v);
                     s_min = s_min.inf(&v);
                     s_max = s_max.sup(&v);
@@ -135,13 +128,13 @@ impl eframe::App for App {
                 let scale = (r_max - r_min).component_div(&(s_max - s_min)).min();
                 let offset = 0.5 * ((r_max + r_min) - scale * (s_max + s_min));
 
-                let stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 255, 255));
-                for i in 0..stroke2.len() - 1 {
-                    let v0 = scale * v2_invert_y(stroke2[i + 0]) + offset;
-                    let v1 = scale * v2_invert_y(stroke2[i + 1]) + offset;
+                let egui_stroke = egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 255, 255));
+                for i in 0..stroke.len() - 1 {
+                    let v0 = scale * v2_invert_y(stroke[i + 0]) + offset;
+                    let v1 = scale * v2_invert_y(stroke[i + 1]) + offset;
                     painter.line_segment(
                         [egui::Pos2::new(v0[0], v0[1]), egui::Pos2::new(v1[0], v1[1])],
-                        stroke,
+                        egui_stroke,
                     );
                 }
             }
@@ -171,16 +164,14 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
                     & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER)
                     != 0;
                 if next_button {
-                    let m = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
-                    let pos = m * Vector4::new(0.0, 0.0, 0.0, 1.0);
-                    let dir = m * Vector4::new(0.0, 0.0, 1.0, 0.0);
-                    model.current_direction[i] += dir;
-                    model.current_stroke[i].push(pos);
+                    let pose = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
+                    let head = poses[0].device_to_absolute_tracking.to_nalgebra();
+                    model.graffiti_vr[i].feed(&pose, &head);
                 }
                 if (prev_buttons[i], next_button) == (true, false) {
-                    let dir = mem::replace(&mut model.current_direction[i], Vector3::zeros());
-                    let stroke = mem::replace(&mut model.current_stroke[i], Vec::new());
-                    model.strokes.push_back((dir, stroke));
+                    let stroke = model.graffiti_vr[i].stroke();
+                    model.strokes.push_back(stroke);
+                    model.graffiti_vr[i].clear();
                 }
                 prev_buttons[i] = next_button;
             }
@@ -192,7 +183,12 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
 }
 
 fn main() {
-    let model = sync::Arc::new(sync::Mutex::new(Default::default()));
+    let model = sync::Arc::new(sync::Mutex::new(Model {
+        is_finished: false,
+        error: None,
+        graffiti_vr: [graffiti_vr::GraffitiVr::new(), graffiti_vr::GraffitiVr::new()],
+        strokes: collections::VecDeque::new(),
+    }));
     let vr_thread = rc::Rc::new(cell::Cell::new(None));
     eframe::run_native(
         "GraffitiVR",
