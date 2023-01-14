@@ -162,9 +162,9 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
                     & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER)
                     != 0;
                 if next_button {
-                    let pose = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
+                    let hand = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
                     let head = poses[0].device_to_absolute_tracking.to_nalgebra();
-                    model.projector[i].feed(&pose, &head);
+                    model.projector[i].feed(&hand, &head);
                 }
                 if (prev_buttons[i], next_button) == (true, false) {
                     let stroke = model.projector[i].stroke();

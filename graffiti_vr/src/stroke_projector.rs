@@ -9,13 +9,16 @@ type Matrix3x4 = nalgebra::Matrix3x4<f32>;
 
 pub struct StrokeProjector {
     stroke: Vec<Vector3>,
-    hand: Matrix3x4,
-    head: Matrix3x4,
+    ey_sum: Vector3,
+    ez_sum: Vector3,
 }
 
-pub(crate) fn project_to_plane(stroke3: &[Vector3], up: Vector3, front: Vector3) -> Vec<Vector2> {
-    let stabilizer = 8.0;
-
+pub(crate) fn project_to_plane(
+    stroke3: &[Vector3],
+    up: Vector3,
+    front: Vector3,
+    stabilizer: f32,
+) -> Vec<Vector2> {
     if stroke3.is_empty() {
         return Vec::new();
     }
@@ -65,27 +68,29 @@ impl StrokeProjector {
     pub fn new() -> Self {
         StrokeProjector {
             stroke: Vec::new(),
-            hand: num_traits::Zero::zero(),
-            head: num_traits::Zero::zero(),
+            ey_sum: num_traits::Zero::zero(),
+            ez_sum: num_traits::Zero::zero(),
         }
     }
 
     pub fn clear(&mut self) {
         self.stroke.clear();
-        self.hand = num_traits::Zero::zero();
-        self.head = num_traits::Zero::zero();
+        self.ey_sum = num_traits::Zero::zero();
+        self.ez_sum = num_traits::Zero::zero();
     }
 
     pub fn feed(&mut self, hand: &Matrix3x4, head: &Matrix3x4) {
-        self.stroke.push(hand * Vector4::new(0.0, 0.0, 0.0, 1.0));
-        self.hand += hand;
-        self.head += head;
+        let ey0 = (head * Vector4::y()).normalize();
+        let ey1 = Vector3::y();
+        let ez0 = ((head - hand) * Vector4::w()).normalize();
+        let ez1 = (head * Vector4::z()).normalize();
+        let ez2 = (hand * Vector4::z()).normalize();
+        self.ey_sum += ey0 + ey1;
+        self.ez_sum += ez0 + ez1 + ez2;
+        self.stroke.push(hand * Vector4::w());
     }
 
     pub fn stroke(&self) -> Vec<Vector2> {
-        let ey = self.head * Vector4::y() + self.stroke.len() as f32 * Vector3::y();
-        let ez = self.head * Vector4::new(0.0, 0.0, 1.0, 1.0)
-            + self.hand * Vector4::new(0.0, 0.0, 1.0, -1.0);
-        project_to_plane(&self.stroke, ey, ez)
+        project_to_plane(&self.stroke, self.ey_sum, self.ez_sum, 8.0)
     }
 }
