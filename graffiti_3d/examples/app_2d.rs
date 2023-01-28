@@ -2,7 +2,7 @@ use eframe::egui;
 use std::*;
 
 struct App {
-    recognizer: graffiti::GraffitiRecognizer,
+    recognizer: graffiti_3d::GraffitiRecognizer,
     stroke: Vec<egui::Vec2>,
     letter: Option<char>,
 }
@@ -10,7 +10,7 @@ struct App {
 impl App {
     fn new() -> Self {
         App {
-            recognizer: graffiti::GraffitiRecognizer::new(16.0),
+            recognizer: graffiti_3d::GraffitiRecognizer::new(16.0),
             stroke: Vec::new(),
             letter: None,
         }
@@ -46,7 +46,11 @@ impl eframe::App for App {
             if let Some(pointer_pos) = response.interact_pointer_pos() {
                 self.stroke.push(pointer_pos - origin);
             } else if !self.stroke.is_empty() {
-                let stroke: Vec<_> = self.stroke.iter().map(|v| [v.x, -v.y]).collect();
+                let stroke: Vec<_> = self
+                    .stroke
+                    .iter()
+                    .map(|v| graffiti_3d::Vector2::new(v.x, -v.y))
+                    .collect();
                 let now = time::Instant::now();
                 self.letter = self.recognizer.recognize(&stroke);
                 println!("{:} ms", now.elapsed().as_millis());

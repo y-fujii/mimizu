@@ -1,11 +1,5 @@
+use crate::{Matrix2x3, Matrix3, Matrix3x4, Vector2, Vector3, Vector4};
 use std::*;
-
-type Vector2 = nalgebra::Vector2<f32>;
-type Vector3 = nalgebra::Vector3<f32>;
-type Vector4 = nalgebra::Vector4<f32>;
-type Matrix3 = nalgebra::Matrix3<f32>;
-type Matrix2x3 = nalgebra::Matrix2x3<f32>;
-type Matrix3x4 = nalgebra::Matrix3x4<f32>;
 
 pub struct StrokeProjector {
     stroke: Vec<Vector3>,
@@ -17,7 +11,7 @@ pub(crate) fn project_to_plane(
     stroke3: &[Vector3],
     up: Vector3,
     front: Vector3,
-    stabilizer: f32,
+    sf: f32,
 ) -> Vec<Vector2> {
     if stroke3.is_empty() {
         return Vec::new();
@@ -34,7 +28,7 @@ pub(crate) fn project_to_plane(
         let ez = front;
         let ex = up.cross(&ez).normalize();
         let ey = ez.cross(&ex).normalize();
-        (cov.trace() / (6.0 * stabilizer)) * (ex * ex.transpose() + ey * ey.transpose())
+        (sf / 6.0) * cov.trace() * (ex * ex.transpose() + ey * ey.transpose())
     };
 
     // XXX: use inverse power method.
@@ -55,28 +49,22 @@ pub(crate) fn project_to_plane(
     let ex = up.cross(&ez).normalize();
     let ey = ez.cross(&ex).normalize();
     let mp = Matrix2x3::from_rows(&[ex.transpose(), ey.transpose()]);
-
-    let mut stroke2 = Vec::new();
-    for v3 in stroke3.iter() {
-        stroke2.push(mp * v3);
-    }
-
-    stroke2
+    stroke3.iter().map(|v3| mp * v3).collect()
 }
 
 impl StrokeProjector {
     pub fn new() -> Self {
         StrokeProjector {
             stroke: Vec::new(),
-            ey_sum: num_traits::Zero::zero(),
-            ez_sum: num_traits::Zero::zero(),
+            ey_sum: nalgebra::zero(),
+            ez_sum: nalgebra::zero(),
         }
     }
 
     pub fn clear(&mut self) {
         self.stroke.clear();
-        self.ey_sum = num_traits::Zero::zero();
-        self.ez_sum = num_traits::Zero::zero();
+        self.ey_sum = nalgebra::zero();
+        self.ez_sum = nalgebra::zero();
     }
 
     pub fn feed(&mut self, hand: &Matrix3x4, head: &Matrix3x4) {
@@ -91,6 +79,6 @@ impl StrokeProjector {
     }
 
     pub fn stroke(&self) -> Vec<Vector2> {
-        project_to_plane(&self.stroke, self.ey_sum, self.ez_sum, 8.0)
+        project_to_plane(&self.stroke, self.ey_sum, self.ez_sum, 1.0 / 8.0)
     }
 }

@@ -1,9 +1,9 @@
-use crate::recognizer::*;
+use crate::*;
 
 #[test]
 fn test_tangents_similarity() {
-    let ex = [1.0, 0.0];
-    let ey = [0.0, 1.0];
+    let ex = Vector2::new(1.0, 0.0);
+    let ey = Vector2::new(0.0, 1.0);
     assert_eq!(tangents_similarity(&[ex], &[ex], 1.0), 1.0);
     assert_eq!(tangents_similarity(&[ex], &[ey], 1.0), 0.0);
     assert_eq!(tangents_similarity(&[ex, ey], &[ex, ex], 1.0), 1.0 / 2.0);

@@ -1,5 +1,5 @@
 use crate::recognizer::*;
-use crate::templates;
+use crate::{templates, Vector2};
 use std::*;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -24,12 +24,12 @@ pub struct GraffitiRecognizer {
     modifier: GraffitiModifier,
 }
 
-pub(crate) fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vec2> {
+pub(crate) fn stroke_from_bytes(bytes: &[u8]) -> Vec<Vector2> {
     let mut dst = Vec::new();
     for byte in bytes.iter() {
         let x = (byte >> 4) as f32;
         let y = (byte & 0xf) as f32;
-        dst.push([x, y]);
+        dst.push(Vector2::new(x, y));
     }
     dst
 }
@@ -60,7 +60,7 @@ impl GraffitiRecognizer {
         }
     }
 
-    pub fn recognize(&mut self, stroke: &[Vec2]) -> Option<char> {
+    pub fn recognize(&mut self, stroke: &[Vector2]) -> Option<char> {
         if stroke.is_empty() {
             return None;
         }

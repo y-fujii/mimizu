@@ -1,2 +1,2 @@
 [workspace]
-members = ["graffiti", "graffiti_vr"]
+members = ["graffiti_3d", "graffiti_vr"]

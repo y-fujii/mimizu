@@ -1,23 +1,21 @@
 #![windows_subsystem = "windows"]
 
 mod openvr;
-mod stroke_projector;
 use eframe::egui;
 use std::*;
-use stroke_projector::StrokeProjector;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
 struct Model {
     is_finished: bool,
     error: Option<String>,
-    projector: [StrokeProjector; 2],
+    projector: [graffiti_3d::StrokeProjector; 2],
     strokes: collections::VecDeque<Vec<Vector2>>,
 }
 
 struct App {
     model: sync::Arc<sync::Mutex<Model>>,
-    recognizer: graffiti::GraffitiRecognizer,
+    recognizer: graffiti_3d::GraffitiRecognizer,
     text: Vec<char>,
     cursor: usize,
 }
@@ -30,7 +28,7 @@ impl App {
     fn new(model: sync::Arc<sync::Mutex<Model>>) -> Self {
         App {
             model: model,
-            recognizer: graffiti::GraffitiRecognizer::new(0.02),
+            recognizer: graffiti_3d::GraffitiRecognizer::new(0.02),
             text: Vec::new(),
             cursor: 0,
         }
@@ -50,7 +48,6 @@ impl eframe::App for App {
         }
 
         if let Some(stroke) = stroke {
-            let stroke: Vec<_> = stroke.iter().map(|v| [v[0], v[1]]).collect();
             match self.recognizer.recognize(&stroke) {
                 Some('\x08') => {
                     if self.cursor > 0 {
@@ -78,10 +75,10 @@ impl eframe::App for App {
             }
 
             let indicator = match self.recognizer.modifier() {
-                graffiti::GraffitiModifier::Symbol => ".",
-                graffiti::GraffitiModifier::Caps => "^",
-                graffiti::GraffitiModifier::None => match self.recognizer.mode() {
-                    graffiti::GraffitiMode::Number => "#",
+                graffiti_3d::GraffitiModifier::Symbol => ".",
+                graffiti_3d::GraffitiModifier::Caps => "^",
+                graffiti_3d::GraffitiModifier::None => match self.recognizer.mode() {
+                    graffiti_3d::GraffitiMode::Number => "#",
                     _ => " ",
                 },
             };
@@ -147,6 +144,7 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
     };
     let mut prev_buttons = [false; 2];
     //GetTrackedDeviceIndexForControllerRole
+    let mut time = time::Instant::now();
     loop {
         let mut poses: [_; 3] = Default::default();
         vr.get_device_to_absolute_tracking_pose(&mut poses);
@@ -176,7 +174,9 @@ fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
         }
 
         ctx.request_repaint();
-        thread::sleep(time::Duration::from_secs(1) / 90);
+
+        let t0 = mem::replace(&mut time, time::Instant::now());
+        thread::sleep(t0 + time::Duration::from_secs(1) / 90 - time);
     }
 }
 
@@ -184,7 +184,10 @@ fn main() {
     let model = sync::Arc::new(sync::Mutex::new(Model {
         is_finished: false,
         error: None,
-        projector: [StrokeProjector::new(), StrokeProjector::new()],
+        projector: [
+            graffiti_3d::StrokeProjector::new(),
+            graffiti_3d::StrokeProjector::new(),
+        ],
         strokes: collections::VecDeque::new(),
     }));
     let vr_thread = rc::Rc::new(cell::Cell::new(None));

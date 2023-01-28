@@ -1,36 +1,18 @@
+use crate::Vector2;
 use std::*;
-
-pub(crate) type Vec2 = [f32; 2];
 
 pub struct Recognizer {
     n_samples: usize,
-    templates: Vec<Vec<Vec2>>,
+    templates: Vec<Vec<Vector2>>,
 }
 
-pub(crate) fn sub(x: Vec2, y: Vec2) -> Vec2 {
-    [x[0] - y[0], x[1] - y[1]]
-}
-
-pub(crate) fn dot(x: Vec2, y: Vec2) -> f32 {
-    x[0] * y[0] + x[1] * y[1]
-}
-
-pub(crate) fn norm(x: Vec2) -> f32 {
-    f32::sqrt(dot(x, x))
-}
-
-pub(crate) fn normalize(x: Vec2) -> Vec2 {
-    let n = norm(x);
-    [x[0] / n, x[1] / n]
-}
-
-pub(crate) fn stroke_len(stroke: &[Vec2]) -> f32 {
+pub(crate) fn stroke_len(stroke: &[Vector2]) -> f32 {
     (1..stroke.len())
-        .map(|i| norm(sub(stroke[i], stroke[i - 1])))
+        .map(|i| (stroke[i] - stroke[i - 1]).norm())
         .sum()
 }
 
-pub(crate) fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
+pub(crate) fn tangents_from_stroke(stroke: &[Vector2], n: usize) -> Vec<Vector2> {
     let len = stroke_len(stroke);
     if len <= 0.0 {
         return Vec::new();
@@ -42,10 +24,10 @@ pub(crate) fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
     let mut j = 0;
     while j < n {
         if n as f32 * pos <= (j as f32 + 0.5) * len {
-            pos += norm(sub(stroke[i + 1], stroke[i]));
+            pos += (stroke[i + 1] - stroke[i]).norm();
             i += 1;
         } else {
-            dst.push(normalize(sub(stroke[i], stroke[i - 1])));
+            dst.push((stroke[i] - stroke[i - 1]).normalize());
             j += 1;
         }
     }
@@ -53,12 +35,12 @@ pub(crate) fn tangents_from_stroke(stroke: &[Vec2], n: usize) -> Vec<Vec2> {
 }
 
 // f(a, b) == f(b, a), f(a, a) == 1, -1 <= f(a, b) <= 1.
-pub(crate) fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32 {
+pub(crate) fn tangents_similarity(ta: &[Vector2], tb: &[Vector2], penalty: f32) -> f32 {
     let mut dps = vec![(0.0, -f32::INFINITY); tb.len() + 1];
     let mut dp0 = (0.0, 0.0);
     for i in 0..ta.len() {
         for j in 0..tb.len() {
-            let s = dot(tb[j], ta[i]);
+            let s = tb[j].dot(&ta[i]);
             let v0 = dp0.1 + 0.5 * (dp0.0 + s);
             let v1 = dps[j + 1].1 + 0.25 * (dps[j + 1].0 + s) - penalty;
             let v2 = dps[j + 0].1 + 0.25 * (dps[j + 0].0 + s) - penalty;
@@ -66,7 +48,7 @@ pub(crate) fn tangents_similarity(ta: &[Vec2], tb: &[Vec2], penalty: f32) -> f32
         }
         dp0 = (0.0, -f32::INFINITY);
     }
-    let v = dps.last().unwrap().1 + 0.5 * dot(*tb.last().unwrap(), *ta.last().unwrap());
+    let v = dps.last().unwrap().1 + 0.5 * tb.last().unwrap().dot(ta.last().unwrap());
     v / cmp::max(ta.len(), tb.len()) as f32
 }
 
@@ -78,12 +60,12 @@ impl Recognizer {
         }
     }
 
-    pub fn add_template(&mut self, stroke: &[Vec2]) {
+    pub fn add_template(&mut self, stroke: &[Vector2]) {
         self.templates
             .push(tangents_from_stroke(stroke, self.n_samples));
     }
 
-    pub fn recognize(&self, stroke: &[Vec2]) -> Option<usize> {
+    pub fn recognize(&self, stroke: &[Vector2]) -> Option<usize> {
         let input = tangents_from_stroke(stroke, self.n_samples);
         if input.is_empty() {
             return None;
@@ -102,7 +84,7 @@ impl Recognizer {
         best_idx
     }
 
-    pub fn recognize_all(&self, stroke: &[Vec2]) -> Vec<f32> {
+    pub fn recognize_all(&self, stroke: &[Vector2]) -> Vec<f32> {
         let input = tangents_from_stroke(stroke, self.n_samples);
         if input.is_empty() {
             return vec![-1.0; self.templates.len()];

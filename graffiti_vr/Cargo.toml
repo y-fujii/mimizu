@@ -7,7 +7,6 @@ edition = "2021"
 cc = "*"
 
 [dependencies]
-num-traits = "*"
 nalgebra = "*"
 eframe = "*"
-graffiti = { path = "../graffiti" }
+graffiti_3d = { path = "../graffiti_3d" }
