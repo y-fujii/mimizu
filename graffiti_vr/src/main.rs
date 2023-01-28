@@ -1,5 +1,6 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod chatbox;
 mod openvr;
 use eframe::egui;
 use std::*;
@@ -18,6 +19,7 @@ struct App {
     recognizer: graffiti_3d::GraffitiRecognizer,
     text: Vec<char>,
     cursor: usize,
+    chatbox: Option<chatbox::ChatBox>,
 }
 
 fn v2_invert_y(v: Vector2) -> Vector2 {
@@ -31,6 +33,7 @@ impl App {
             recognizer: graffiti_3d::GraffitiRecognizer::new(0.02),
             text: Vec::new(),
             cursor: 0,
+            chatbox: chatbox::ChatBox::new().ok(),
         }
     }
 }
@@ -56,10 +59,14 @@ impl eframe::App for App {
                     }
                 }
                 Some('←') => {
-                    self.cursor = cmp::max(self.cursor - 1, 0);
+                    self.cursor = cmp::max(self.cursor, 1) - 1;
                 }
                 Some('→') => {
                     self.cursor = cmp::min(self.cursor + 1, self.text.len());
+                }
+                Some('\n') => {
+                    self.text.clear();
+                    self.cursor = 0;
                 }
                 Some(c) => {
                     self.text.insert(self.cursor, c);
@@ -68,10 +75,19 @@ impl eframe::App for App {
                 None => (),
             }
         }
+        if let Some(ref mut chatbox) = self.chatbox {
+            chatbox.input(self.text.iter().collect());
+            chatbox.typing(current_strokes.iter().any(|s| s.len() > 0));
+            chatbox.update();
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(err) = error {
                 ui.label(err);
+            }
+
+            if let None = self.chatbox {
+                ui.label("Failed to initialize Chatbox client.");
             }
 
             let indicator = match self.recognizer.modifier() {
