@@ -67,10 +67,10 @@ impl eframe::App for App {
     }
 }
 
-fn main() {
+fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Graffiti",
         eframe::NativeOptions::default(),
         Box::new(|_| Box::new(App::new())),
-    );
+    )
 }

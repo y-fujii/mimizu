@@ -12,25 +12,35 @@ pub(crate) fn stroke_len(stroke: &[Vector2]) -> f32 {
         .sum()
 }
 
+// results are not strictly normalized to improve robustness.
 pub(crate) fn tangents_from_stroke(stroke: &[Vector2], n: usize) -> Vec<Vector2> {
+    assert!(n > 0);
     let len = stroke_len(stroke);
     if len <= 0.0 {
-        return Vec::new();
+        return vec![nalgebra::zero(); n];
     }
 
     let mut dst = Vec::new();
-    let mut pos = 0.0;
+    let mut p = stroke[0];
+    let mut l = 0.0;
     let mut i = 0;
-    let mut j = 0;
+    let mut j = 1;
     while j < n {
-        if n as f32 * pos <= (j as f32 + 0.5) * len {
-            pos += (stroke[i + 1] - stroke[i]).norm();
+        let dl = (stroke[i + 1] - stroke[i]).norm();
+        let dt = (j as f32 / n as f32) * len - l;
+        if dl <= dt {
+            l += dl;
             i += 1;
         } else {
-            dst.push((stroke[i] - stroke[i - 1]).normalize());
+            let q = (1.0 - dt / dl) * stroke[i] + (dt / dl) * stroke[i + 1];
+            dst.push((n as f32 / len) * (q - p));
+            p = q;
             j += 1;
         }
     }
+    dst.push((n as f32 / len) * (stroke.last().unwrap() - p));
+
+    assert_eq!(dst.len(), n);
     dst
 }
 
@@ -67,9 +77,6 @@ impl Recognizer {
 
     pub fn recognize(&self, stroke: &[Vector2]) -> Option<usize> {
         let input = tangents_from_stroke(stroke, self.n_samples);
-        if input.is_empty() {
-            return None;
-        }
 
         let mut best_idx = None;
         let mut best_sim = 0.0;
@@ -86,9 +93,6 @@ impl Recognizer {
 
     pub fn recognize_all(&self, stroke: &[Vector2]) -> Vec<f32> {
         let input = tangents_from_stroke(stroke, self.n_samples);
-        if input.is_empty() {
-            return vec![-1.0; self.templates.len()];
-        }
 
         self.templates
             .iter()
