@@ -9,4 +9,5 @@ cc = "*"
 [dependencies]
 nalgebra = "*"
 eframe = "*"
+wana_kana = "*"
 graffiti_3d = { path = "../graffiti_3d" }

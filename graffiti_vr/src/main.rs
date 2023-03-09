@@ -2,24 +2,32 @@
 
 mod chatbox;
 mod openvr;
+mod vr_input;
 use eframe::egui;
+use eframe::glow;
+use eframe::glow::HasContext;
 use std::*;
+use wana_kana::ConvertJapanese;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
 struct Model {
-    is_finished: bool,
-    error: Option<String>,
-    projector: [graffiti_3d::StrokeProjector; 2],
-    strokes: collections::VecDeque<Vec<Vector2>>,
-}
-
-struct App {
-    model: sync::Arc<sync::Mutex<Model>>,
-    recognizer: graffiti_3d::GraffitiRecognizer,
+    current_strokes: [Vec<Vector2>; 2],
     text: Vec<char>,
     cursor: usize,
+    indicator: char,
+}
+
+struct MainWindow {}
+
+struct App {
+    interval: time::Duration,
+    time: time::Instant,
+    model: Model,
+    vr_input: vr_input::VrInput,
+    recognizer: graffiti_3d::GraffitiRecognizer,
     chatbox: Option<chatbox::ChatBox>,
+    main_window: MainWindow,
 }
 
 fn v2_invert_y(v: Vector2) -> Vector2 {
@@ -27,79 +35,142 @@ fn v2_invert_y(v: Vector2) -> Vector2 {
 }
 
 impl App {
-    fn new(model: sync::Arc<sync::Mutex<Model>>) -> Self {
+    fn new(cc: &eframe::CreationContext) -> Self {
+        let tex;
+        let fb;
+        unsafe {
+            let gl = cc.gl.as_ref().unwrap();
+
+            tex = gl.create_texture().unwrap();
+            gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::SRGB8 as i32,
+                1024,
+                1024,
+                0,
+                glow::RGB,
+                glow::UNSIGNED_BYTE,
+                None,
+            );
+            gl.bind_texture(glow::TEXTURE_2D, None);
+
+            fb = gl.create_framebuffer().unwrap();
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fb));
+            gl.framebuffer_texture_2d(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::TEXTURE_2D,
+                Some(tex),
+                0,
+            );
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+        }
+
+        let mut font = egui::FontDefinitions::default();
+        font.font_data.insert(
+            "mplus".to_owned(),
+            egui::FontData::from_static(include_bytes!("../../assets/mplus-1c-regular-sub.ttf"))
+                .tweak(egui::FontTweak {
+                    scale: 1.0,
+                    y_offset_factor: 0.0,
+                    y_offset: -12.0,
+                }),
+        );
+        font.families
+            .get_mut(&egui::FontFamily::Monospace)
+            .unwrap()
+            .push("mplus".to_owned());
+        font.families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap()
+            .push("mplus".to_owned());
+        cc.egui_ctx.set_fonts(font);
+
         App {
-            model: model,
+            interval: time::Duration::from_secs(1) / 90,
+            time: time::Instant::now(),
+            model: Model {
+                current_strokes: [Vec::new(), Vec::new()],
+                text: Vec::new(),
+                cursor: 0,
+                indicator: ' ',
+            },
+            vr_input: vr_input::VrInput::new().unwrap(),
             recognizer: graffiti_3d::GraffitiRecognizer::new(0.02),
-            text: Vec::new(),
-            cursor: 0,
             chatbox: chatbox::ChatBox::new().ok(),
+            main_window: MainWindow {},
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        let error;
-        let current_strokes;
-        let stroke;
-        {
-            let mut model = self.model.lock().unwrap();
-            error = model.error.clone();
-            current_strokes = [model.projector[0].stroke(), model.projector[1].stroke()];
-            stroke = model.strokes.pop_front();
-        }
+        thread::sleep(self.interval.saturating_sub(self.time.elapsed()));
+        self.time = time::Instant::now();
 
-        if let Some(stroke) = stroke {
+        self.vr_input.update();
+        self.model.current_strokes = self.vr_input.current_strokes();
+
+        if let Some(stroke) = self.vr_input.pop_stroke() {
             match self.recognizer.recognize(&stroke) {
                 Some('\x08') => {
-                    if self.cursor > 0 {
-                        self.cursor -= 1;
-                        self.text.remove(self.cursor);
+                    if self.model.cursor > 0 {
+                        self.model.cursor -= 1;
+                        self.model.text.remove(self.model.cursor);
                     }
                 }
                 Some('←') => {
-                    self.cursor = cmp::max(self.cursor, 1) - 1;
+                    self.model.cursor = cmp::max(self.model.cursor, 1) - 1;
                 }
                 Some('→') => {
-                    self.cursor = cmp::min(self.cursor + 1, self.text.len());
+                    self.model.cursor = cmp::min(self.model.cursor + 1, self.model.text.len());
                 }
                 Some('\n') => {
-                    self.text.clear();
-                    self.cursor = 0;
+                    self.model.text.clear();
+                    self.model.cursor = 0;
                 }
                 Some(c) => {
-                    self.text.insert(self.cursor, c);
-                    self.cursor += 1;
+                    self.model.text.insert(self.model.cursor, c);
+                    self.model.cursor += 1;
                 }
                 None => (),
             }
         }
+        self.model.indicator = match self.recognizer.modifier() {
+            graffiti_3d::GraffitiModifier::Symbol => '.',
+            graffiti_3d::GraffitiModifier::Caps => '^',
+            graffiti_3d::GraffitiModifier::None => match self.recognizer.mode() {
+                graffiti_3d::GraffitiMode::Number => '#',
+                _ => ' ',
+            },
+        };
+
         if let Some(ref mut chatbox) = self.chatbox {
-            chatbox.input(self.text.iter().collect());
-            chatbox.typing(current_strokes.iter().any(|s| s.len() > 0));
+            let text: String = self.model.text.iter().collect();
+            chatbox.input(text /*.to_hiragana()*/);
+            chatbox.typing(self.model.current_strokes.iter().any(|s| s.len() > 0));
             chatbox.update();
         }
 
+        self.main_window.update(ctx, &self.model);
+
+        ctx.request_repaint();
+    }
+}
+
+impl MainWindow {
+    fn update(&mut self, ctx: &egui::Context, model: &Model) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(err) = error {
-                ui.label(err);
-            }
-
-            if let None = self.chatbox {
-                ui.label("Failed to initialize Chatbox client.");
-            }
-
-            let indicator = match self.recognizer.modifier() {
-                graffiti_3d::GraffitiModifier::Symbol => ".",
-                graffiti_3d::GraffitiModifier::Caps => "^",
-                graffiti_3d::GraffitiModifier::None => match self.recognizer.mode() {
-                    graffiti_3d::GraffitiMode::Number => "#",
-                    _ => " ",
-                },
-            };
-            let lhs: String = self.text[..self.cursor].iter().collect();
-            let rhs: String = self.text[self.cursor..].iter().collect();
+            let lhs = model.text[..model.cursor]
+                .iter()
+                .collect::<String>()
+                /*.to_hiragana()*/;
+            let rhs = model.text[model.cursor..]
+                .iter()
+                .collect::<String>()
+                /*.to_hiragana()*/;
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x = 1.0;
                 ui.label(
@@ -108,7 +179,7 @@ impl eframe::App for App {
                         .color(egui::Color32::from_rgb(255, 255, 255)),
                 );
                 ui.label(
-                    egui::RichText::new(indicator)
+                    egui::RichText::new(model.indicator)
                         .size(24.0)
                         .color(egui::Color32::from_rgb(0, 0, 0))
                         .background_color(egui::Color32::from_rgb(128, 192, 255)),
@@ -125,7 +196,7 @@ impl eframe::App for App {
             let r_min = Vector2::new(response.rect.min.x, response.rect.min.y);
             let r_max = Vector2::new(response.rect.max.x, response.rect.max.y);
 
-            for stroke in current_strokes.iter() {
+            for stroke in model.current_strokes.iter() {
                 if stroke.len() < 2 {
                     continue;
                 }
@@ -153,76 +224,20 @@ impl eframe::App for App {
     }
 }
 
-fn vr_thread_proc(model: sync::Arc<sync::Mutex<Model>>, ctx: egui::Context) {
-    let Ok(vr) = openvr::OpenVr::new() else {
-        model.lock().unwrap().error = Some("Failed to initialize OpenVR.".to_string());
-        return;
-    };
-    let mut prev_buttons = [false; 2];
-    //GetTrackedDeviceIndexForControllerRole
-    let mut time = time::Instant::now();
-    loop {
-        let mut poses: [_; 3] = Default::default();
-        vr.get_device_to_absolute_tracking_pose(&mut poses);
-        let controller_states = [vr.get_controller_state(1), vr.get_controller_state(2)];
-
-        {
-            let mut model = model.lock().unwrap();
-            if model.is_finished {
-                break;
-            }
-            for i in 0..2 {
-                let next_button = controller_states[i].button_pressed
-                    & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER)
-                    != 0;
-                if next_button {
-                    let hand = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
-                    let head = poses[0].device_to_absolute_tracking.to_nalgebra();
-                    model.projector[i].feed(&hand, &head);
-                }
-                if (prev_buttons[i], next_button) == (true, false) {
-                    let stroke = model.projector[i].stroke();
-                    model.strokes.push_back(stroke);
-                    model.projector[i].clear();
-                }
-                prev_buttons[i] = next_button;
-            }
+fn main() -> eframe::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        extern "C" {
+            fn set_windows_timer_precision();
         }
-
-        ctx.request_repaint();
-
-        let t0 = mem::replace(&mut time, time::Instant::now());
-        thread::sleep(t0 + time::Duration::from_secs(1) / 90 - time);
+        unsafe { set_windows_timer_precision() };
     }
-}
 
-fn main() {
-    let model = sync::Arc::new(sync::Mutex::new(Model {
-        is_finished: false,
-        error: None,
-        projector: [
-            graffiti_3d::StrokeProjector::new(),
-            graffiti_3d::StrokeProjector::new(),
-        ],
-        strokes: collections::VecDeque::new(),
-    }));
-    let vr_thread = rc::Rc::new(cell::Cell::new(None));
+    let mut opt = eframe::NativeOptions::default();
+    opt.vsync = false;
     eframe::run_native(
         "GraffitiVR",
-        eframe::NativeOptions::default(),
-        Box::new({
-            let model = model.clone();
-            let vr_thread = vr_thread.clone();
-            move |cc| {
-                vr_thread.set(Some(thread::spawn({
-                    let model = model.clone();
-                    let ctx = cc.egui_ctx.clone();
-                    move || vr_thread_proc(model, ctx)
-                })));
-                Box::new(App::new(model))
-            }
-        }),
-    );
-    model.lock().unwrap().is_finished = true;
-    vr_thread.take().unwrap().join().unwrap();
+        opt,
+        Box::new(move |cc| Box::new(App::new(cc))),
+    )
 }

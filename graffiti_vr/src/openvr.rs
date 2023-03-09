@@ -44,7 +44,7 @@ pub struct TrackedDevicePose {
     pub device_is_connected: bool,
 }
 
-pub struct OpenVr {
+pub struct System {
     this: *mut ffi::c_void,
 }
 
@@ -70,19 +70,19 @@ impl HmdMatrix34 {
     }
 }
 
-impl Drop for OpenVr {
+impl Drop for System {
     fn drop(&mut self) {
         unsafe { vr_shutdown(self.this) };
     }
 }
 
-impl OpenVr {
+impl System {
     pub fn new() -> Result<Self, io::Error> {
         let this = unsafe { vr_init() };
         if this.is_null() {
             Err(io::ErrorKind::Other.into())
         } else {
-            Ok(OpenVr { this })
+            Ok(System { this })
         }
     }
 
