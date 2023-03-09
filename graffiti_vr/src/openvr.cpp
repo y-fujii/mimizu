@@ -22,8 +22,8 @@ extern "C" void vr_get_device_to_absolute_tracking_pose(vr::IVRSystem* self, vr:
 	self->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0.0, poses, n);
 }
 
-extern "C" void vr_get_controller_state(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state) {
-	self->GetControllerState(index, state, sizeof(vr::VRControllerState_t));
+extern "C" void vr_get_controller_state_with_pose(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state, vr::TrackedDevicePose_t* pose) {
+	self->GetControllerStateWithPose(vr::TrackingUniverseStanding, index, state, sizeof(vr::VRControllerState_t), pose);
 }
 
 extern "C" void vr_shutdown(vr::IVRSystem*) {

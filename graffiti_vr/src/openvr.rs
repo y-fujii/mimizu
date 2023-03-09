@@ -55,7 +55,12 @@ extern "C" {
         _: *mut TrackedDevicePose,
         _: u32,
     );
-    fn vr_get_controller_state(_: *mut ffi::c_void, _: u32, _: *mut VRControllerState);
+    fn vr_get_controller_state_with_pose(
+        _: *mut ffi::c_void,
+        _: u32,
+        _: *mut VRControllerState,
+        _: &mut TrackedDevicePose,
+    );
     fn vr_shutdown(_: *mut ffi::c_void);
 }
 
@@ -92,9 +97,10 @@ impl System {
         };
     }
 
-    pub fn get_controller_state(&self, n: u32) -> VRControllerState {
-        let mut dst = Default::default();
-        unsafe { vr_get_controller_state(self.this, n, &mut dst) };
-        dst
+    pub fn get_controller_state_with_pose(&self, n: u32) -> (VRControllerState, TrackedDevicePose) {
+        let mut state = Default::default();
+        let mut pose = Default::default();
+        unsafe { vr_get_controller_state_with_pose(self.this, n, &mut state, &mut pose) };
+        (state, pose)
     }
 }

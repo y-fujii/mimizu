@@ -28,18 +28,22 @@ impl VrInput {
         //GetTrackedDeviceIndexForControllerRole
         let mut poses: [_; 3] = Default::default();
         self.system.get_device_to_absolute_tracking_pose(&mut poses);
-        let controller_states = [
-            self.system.get_controller_state(1),
-            self.system.get_controller_state(2),
+        let controllers = [
+            self.system.get_controller_state_with_pose(1),
+            self.system.get_controller_state_with_pose(2),
         ];
 
+        let head = poses[0].device_to_absolute_tracking.to_nalgebra();
         for i in 0..2 {
-            let button = controller_states[i].button_pressed
+            let button = controllers[i].0.button_pressed
                 & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER)
                 != 0;
+            if button != self.buttons[i] {
+                let hand = controllers[i].1.device_to_absolute_tracking.to_nalgebra();
+                self.projector[i].feed(&hand, &head);
+            }
             if button {
                 let hand = poses[i + 1].device_to_absolute_tracking.to_nalgebra();
-                let head = poses[0].device_to_absolute_tracking.to_nalgebra();
                 self.projector[i].feed(&hand, &head);
             }
             if (self.buttons[i], button) == (true, false) {
