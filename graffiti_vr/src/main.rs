@@ -34,6 +34,20 @@ fn v2_invert_y(v: Vector2) -> Vector2 {
     Vector2::new(v[0], -v[1])
 }
 
+fn sleep_high_res(d: time::Duration) {
+    #[cfg(target_os = "windows")]
+    {
+        extern "C" {
+            fn sleep_100ns(_: i64) -> bool;
+        }
+        let t = (d.as_nanos() / 100).try_into().unwrap();
+        let r = unsafe { sleep_100ns(t) };
+        assert!(r);
+    }
+    #[cfg(not(target_os = "windows"))]
+    thread::sleep(d);
+}
+
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
         let tex;
@@ -107,7 +121,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        thread::sleep(self.interval.saturating_sub(self.time.elapsed()));
+        sleep_high_res(self.interval.saturating_sub(self.time.elapsed()));
         self.time = time::Instant::now();
 
         self.vr_input.update();
@@ -225,14 +239,6 @@ impl MainWindow {
 }
 
 fn main() -> eframe::Result<()> {
-    #[cfg(target_os = "windows")]
-    {
-        extern "C" {
-            fn set_windows_timer_precision();
-        }
-        unsafe { set_windows_timer_precision() };
-    }
-
     let mut opt = eframe::NativeOptions::default();
     opt.vsync = false;
     eframe::run_native(

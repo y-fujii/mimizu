@@ -1,14 +1,27 @@
+#if defined(_WIN32)
+
+#include <cstdint>
 #include <windows.h>
 
 
-// ref. <https://learn.microsoft.com/en-us/windows/win32/api/timeapi/nf-timeapi-timebeginperiod>.
-// ref. <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocessinformation>.
-extern "C" void set_windows_timer_precision() {
-	PROCESS_POWER_THROTTLING_STATE ppts = {};
-	ppts.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
-	ppts.ControlMask = PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION;
-	ppts.StateMask = 0;
-	SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &ppts, sizeof(ppts));
+extern "C" bool sleep_100ns(std::int64_t t) {
+	thread_local HANDLE timer = CreateWaitableTimerEx(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	if (timer == NULL) {
+		return false;
+	}
 
-	timeBeginPeriod(1);
+	LARGE_INTEGER time;
+	time.QuadPart = -t;
+	if (!SetWaitableTimer(timer, &time, 0, NULL, NULL, 0)) {
+		return false;
+	}
+
+	if (WaitForSingleObject(timer, INFINITE) != WAIT_OBJECT_0) {
+		return false;
+	}
+
+	return true;
 }
+
+
+#endif
