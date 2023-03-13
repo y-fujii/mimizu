@@ -12,9 +12,8 @@ pub struct VrInput {
 
 impl VrInput {
     pub fn new() -> io::Result<VrInput> {
-        let system = openvr::System::new()?;
         Ok(VrInput {
-            system: system,
+            system: openvr::System::new(),
             buttons: [false, false],
             projector: [
                 graffiti_3d::StrokeProjector::new(),

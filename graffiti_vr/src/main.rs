@@ -1,33 +1,33 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod chatbox;
+mod egui_overlay;
 mod openvr;
 mod vr_input;
-use eframe::egui;
-use eframe::glow;
-use eframe::glow::HasContext;
+use eframe::{egui, glow};
 use std::*;
-use wana_kana::ConvertJapanese;
+//use wana_kana::ConvertJapanese;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
 struct Model {
+    interval: time::Duration,
     current_strokes: [Vec<Vector2>; 2],
     text: Vec<char>,
     cursor: usize,
     indicator: char,
 }
 
-struct MainWindow {}
+struct Ui {}
 
 struct App {
-    interval: time::Duration,
     time: time::Instant,
     model: Model,
     vr_input: vr_input::VrInput,
     recognizer: graffiti_3d::GraffitiRecognizer,
     chatbox: Option<chatbox::ChatBox>,
-    main_window: MainWindow,
+    overlay: egui_overlay::EguiOverlay,
+    ui: Ui,
 }
 
 fn v2_invert_y(v: Vector2) -> Vector2 {
@@ -50,62 +50,17 @@ fn sleep_high_res(d: time::Duration) {
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
-        let tex;
-        let fb;
-        unsafe {
-            let gl = cc.gl.as_ref().unwrap();
-
-            tex = gl.create_texture().unwrap();
-            gl.bind_texture(glow::TEXTURE_2D, Some(tex));
-            gl.tex_image_2d(
-                glow::TEXTURE_2D,
-                0,
-                glow::SRGB8 as i32,
-                1024,
-                1024,
-                0,
-                glow::RGB,
-                glow::UNSIGNED_BYTE,
-                None,
-            );
-            gl.bind_texture(glow::TEXTURE_2D, None);
-
-            fb = gl.create_framebuffer().unwrap();
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fb));
-            gl.framebuffer_texture_2d(
-                glow::FRAMEBUFFER,
-                glow::COLOR_ATTACHMENT0,
-                glow::TEXTURE_2D,
-                Some(tex),
-                0,
-            );
-            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-        }
-
-        let mut font = egui::FontDefinitions::default();
-        font.font_data.insert(
-            "mplus".to_owned(),
-            egui::FontData::from_static(include_bytes!("../../assets/mplus-1c-regular-sub.ttf"))
-                .tweak(egui::FontTweak {
-                    scale: 1.0,
-                    y_offset_factor: 0.0,
-                    y_offset: -12.0,
-                }),
+        assert!(openvr::init());
+        let overlay = egui_overlay::EguiOverlay::new(
+            cc.gl.as_ref().unwrap().clone(),
+            &[512, 512],
+            b"GraffitiVR\0",
         );
-        font.families
-            .get_mut(&egui::FontFamily::Monospace)
-            .unwrap()
-            .push("mplus".to_owned());
-        font.families
-            .get_mut(&egui::FontFamily::Proportional)
-            .unwrap()
-            .push("mplus".to_owned());
-        cc.egui_ctx.set_fonts(font);
 
         App {
-            interval: time::Duration::from_secs(1) / 90,
             time: time::Instant::now(),
             model: Model {
+                interval: time::Duration::from_secs(1) / 90,
                 current_strokes: [Vec::new(), Vec::new()],
                 text: Vec::new(),
                 cursor: 0,
@@ -114,14 +69,15 @@ impl App {
             vr_input: vr_input::VrInput::new().unwrap(),
             recognizer: graffiti_3d::GraffitiRecognizer::new(0.02),
             chatbox: chatbox::ChatBox::new().ok(),
-            main_window: MainWindow {},
+            ui: Ui::new(&cc.egui_ctx, &overlay.context),
+            overlay: overlay,
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        sleep_high_res(self.interval.saturating_sub(self.time.elapsed()));
+        sleep_high_res(self.model.interval.saturating_sub(self.time.elapsed()));
         self.time = time::Instant::now();
 
         self.vr_input.update();
@@ -168,73 +124,122 @@ impl eframe::App for App {
             chatbox.update();
         }
 
-        self.main_window.update(ctx, &self.model);
+        self.overlay.run(|ctx| self.ui.overlay(ctx, &self.model));
+        self.ui.main(ctx, &self.model);
 
         ctx.request_repaint();
     }
+
+    fn on_exit(&mut self, _: Option<&glow::Context>) {
+        openvr::shutdown();
+    }
 }
 
-impl MainWindow {
-    fn update(&mut self, ctx: &egui::Context, model: &Model) {
+impl Ui {
+    fn new(ctx_main: &egui::Context, ctx_overlay: &egui::Context) -> Self {
+        Self::add_font_ja(ctx_main);
+        Self::add_font_ja(ctx_overlay);
+
+        Ui {}
+    }
+
+    fn main(&self, ctx: &egui::Context, model: &Model) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let lhs = model.text[..model.cursor]
-                .iter()
-                .collect::<String>()
-                /*.to_hiragana()*/;
-            let rhs = model.text[model.cursor..]
-                .iter()
-                .collect::<String>()
-                /*.to_hiragana()*/;
-            ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing.x = 1.0;
-                ui.label(
-                    egui::RichText::new(lhs)
-                        .size(24.0)
-                        .color(egui::Color32::from_rgb(255, 255, 255)),
-                );
-                ui.label(
-                    egui::RichText::new(model.indicator)
-                        .size(24.0)
-                        .color(egui::Color32::from_rgb(0, 0, 0))
-                        .background_color(egui::Color32::from_rgb(128, 192, 255)),
-                );
-                ui.label(
-                    egui::RichText::new(rhs)
-                        .size(24.0)
-                        .color(egui::Color32::from_rgb(255, 255, 255)),
-                );
-            });
-
-            let (response, painter) =
-                ui.allocate_painter(ui.available_size_before_wrap(), egui::Sense::drag());
-            let r_min = Vector2::new(response.rect.min.x, response.rect.min.y);
-            let r_max = Vector2::new(response.rect.max.x, response.rect.max.y);
-
-            for stroke in model.current_strokes.iter() {
-                if stroke.len() < 2 {
-                    continue;
-                }
-                let mut s_min = Vector2::repeat(f32::INFINITY);
-                let mut s_max = Vector2::repeat(-f32::INFINITY);
-                for v in stroke.iter() {
-                    let v = v2_invert_y(*v);
-                    s_min = s_min.inf(&v);
-                    s_max = s_max.sup(&v);
-                }
-                let scale = (r_max - r_min).component_div(&(s_max - s_min)).min();
-                let offset = 0.5 * ((r_max + r_min) - scale * (s_max + s_min));
-
-                let egui_stroke = egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 255, 255));
-                for i in 0..stroke.len() - 1 {
-                    let v0 = scale * v2_invert_y(stroke[i + 0]) + offset;
-                    let v1 = scale * v2_invert_y(stroke[i + 1]) + offset;
-                    painter.line_segment(
-                        [egui::Pos2::new(v0[0], v0[1]), egui::Pos2::new(v1[0], v1[1])],
-                        egui_stroke,
-                    );
-                }
-            }
+            self.text(ui, model);
+            self.plot(ui, model);
         });
+    }
+
+    fn overlay(&self, ctx: &egui::Context, model: &Model) {
+        let frame = egui::Frame::none();
+        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            self.text(ui, model);
+            self.plot(ui, model);
+        });
+    }
+
+    fn text(&self, ui: &mut egui::Ui, model: &Model) {
+        let lhs = model.text[..model.cursor]
+            .iter()
+            .collect::<String>()
+            /*.to_hiragana()*/;
+        let rhs = model.text[model.cursor..]
+            .iter()
+            .collect::<String>()
+            /*.to_hiragana()*/;
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = 1.0;
+            ui.label(
+                egui::RichText::new(lhs)
+                    .size(24.0)
+                    .color(egui::Color32::from_rgb(255, 255, 255)),
+            );
+            ui.label(
+                egui::RichText::new(model.indicator)
+                    .size(24.0)
+                    .color(egui::Color32::from_rgb(0, 0, 0))
+                    .background_color(egui::Color32::from_rgb(128, 192, 255)),
+            );
+            ui.label(
+                egui::RichText::new(rhs)
+                    .size(24.0)
+                    .color(egui::Color32::from_rgb(255, 255, 255)),
+            );
+        });
+    }
+
+    fn plot(&self, ui: &mut egui::Ui, model: &Model) {
+        let (response, painter) =
+            ui.allocate_painter(ui.available_size_before_wrap(), egui::Sense::drag());
+        let r_min = Vector2::new(response.rect.min.x, response.rect.min.y);
+        let r_max = Vector2::new(response.rect.max.x, response.rect.max.y);
+
+        for stroke in model.current_strokes.iter() {
+            if stroke.len() < 2 {
+                continue;
+            }
+            let mut s_min = Vector2::repeat(f32::INFINITY);
+            let mut s_max = Vector2::repeat(-f32::INFINITY);
+            for v in stroke.iter() {
+                let v = v2_invert_y(*v);
+                s_min = s_min.inf(&v);
+                s_max = s_max.sup(&v);
+            }
+            let scale = (r_max - r_min).component_div(&(s_max - s_min)).min();
+            let offset = 0.5 * ((r_max + r_min) - scale * (s_max + s_min));
+
+            let egui_stroke = egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 255, 255));
+            for i in 0..stroke.len() - 1 {
+                let v0 = scale * v2_invert_y(stroke[i + 0]) + offset;
+                let v1 = scale * v2_invert_y(stroke[i + 1]) + offset;
+                painter.line_segment(
+                    [egui::Pos2::new(v0[0], v0[1]), egui::Pos2::new(v1[0], v1[1])],
+                    egui_stroke,
+                );
+            }
+        }
+    }
+
+    fn add_font_ja(ctx: &egui::Context) {
+        let mut font = egui::FontDefinitions::default();
+        font.font_data.insert(
+            "mplus".to_owned(),
+            egui::FontData::from_static(include_bytes!("../assets/mplus-1c-regular-sub.ttf"))
+                .tweak(egui::FontTweak {
+                    scale: 1.0,
+                    y_offset_factor: 0.0,
+                    y_offset: -12.0,
+                }),
+        );
+        font.families
+            .get_mut(&egui::FontFamily::Monospace)
+            .unwrap()
+            .push("mplus".to_owned());
+        font.families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap()
+            .push("mplus".to_owned());
+        ctx.set_fonts(font);
     }
 }
 

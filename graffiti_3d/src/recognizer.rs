@@ -14,7 +14,6 @@ pub(crate) fn stroke_len(stroke: &[Vector2]) -> f32 {
 
 // results are not strictly normalized to improve robustness.
 pub(crate) fn tangents_from_stroke(stroke: &[Vector2], n: usize) -> Vec<Vector2> {
-    assert!(n > 0);
     let len = stroke_len(stroke);
     if len <= 0.0 {
         return vec![nalgebra::zero(); n];
@@ -38,7 +37,9 @@ pub(crate) fn tangents_from_stroke(stroke: &[Vector2], n: usize) -> Vec<Vector2>
             j += 1;
         }
     }
-    dst.push((n as f32 / len) * (stroke.last().unwrap() - p));
+    if n > 0 {
+        dst.push((n as f32 / len) * (stroke.last().unwrap() - p));
+    }
 
     assert_eq!(dst.len(), n);
     dst

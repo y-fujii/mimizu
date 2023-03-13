@@ -5,35 +5,39 @@
 #endif
 
 
-extern "C" vr::IVRSystem* vr_init() {
+extern "C" bool vr_init() {
 	vr::HmdError err;
-	return vr::VR_Init(&err, vr::VRApplication_Overlay);
+	return vr::VR_Init(&err, vr::VRApplication_Overlay) != nullptr;
+}
+
+extern "C" void vr_shutdown() {
+	vr::VR_Shutdown();
 }
 
 extern "C" vr::IVRSystem* vr_system() {
 	return vr::VRSystem();
 }
 
-extern "C" vr::IVROverlay* vr_overlay() {
-	return vr::VROverlay();
-}
-
-extern "C" void vr_get_device_to_absolute_tracking_pose(vr::IVRSystem* self, vr::TrackedDevicePose_t* poses, uint32_t n) {
+extern "C" void vr_system_get_device_to_absolute_tracking_pose(vr::IVRSystem* self, vr::TrackedDevicePose_t* poses, uint32_t n) {
 	self->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0.0, poses, n);
 }
 
-extern "C" void vr_get_controller_state_with_pose(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state, vr::TrackedDevicePose_t* pose) {
+extern "C" void vr_system_get_controller_state_with_pose(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state, vr::TrackedDevicePose_t* pose) {
 	self->GetControllerStateWithPose(vr::TrackingUniverseStanding, index, state, sizeof(vr::VRControllerState_t), pose);
 }
 
-extern "C" void vr_shutdown(vr::IVRSystem*) {
-	vr::VR_Shutdown();
+extern "C" vr::IVROverlay* vr_overlay() {
+	return vr::VROverlay();
 }
 
 extern "C" uintptr_t vr_overlay_create(vr::IVROverlay* self, char const* key, char const* name) {
 	uintptr_t handle = 0;
 	self->CreateOverlay(key, name, &handle);
 	return handle;
+}
+
+extern "C" bool vr_overlay_set_flag(vr::IVROverlay* self, uintptr_t handle, uint32_t flag, bool enabled) {
+	return self->SetOverlayFlag(handle, vr::VROverlayFlags(flag), enabled) == 0;
 }
 
 extern "C" bool vr_overlay_set_width_in_meters(vr::IVROverlay* self, uintptr_t handle, float width) {
@@ -48,7 +52,7 @@ extern "C" bool vr_overlay_set_texture(vr::IVROverlay* self, uintptr_t handle, u
 	vr::Texture_t texture {
 		reinterpret_cast<void*>(tex_handle),
 		vr::TextureType_OpenGL,
-		vr::ColorSpace_Linear,
+		vr::ColorSpace_Auto,
 	};
 	return self->SetOverlayTexture(handle, &texture) == 0;
 }
