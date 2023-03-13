@@ -17,9 +17,13 @@ pub struct EguiOverlay {
 
 impl Drop for EguiOverlay {
     fn drop(&mut self) {
+        // XXX
         self.overlay.destroy(self.handle);
-        // XXX: delete framebuffer.
-        // XXX: delete texture.
+        unsafe {
+            let gl = self.painter.gl();
+            gl.delete_framebuffer(self.framebuffer);
+            gl.delete_texture(self.texture);
+        }
     }
 }
 

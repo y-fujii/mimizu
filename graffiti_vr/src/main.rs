@@ -50,7 +50,6 @@ fn sleep_high_res(d: time::Duration) {
 
 impl App {
     fn new(cc: &eframe::CreationContext) -> Self {
-        assert!(openvr::init());
         let overlay = egui_overlay::EguiOverlay::new(
             cc.gl.as_ref().unwrap().clone(),
             &[512, 512],
@@ -128,10 +127,6 @@ impl eframe::App for App {
         self.ui.main(ctx, &self.model);
 
         ctx.request_repaint();
-    }
-
-    fn on_exit(&mut self, _: Option<&glow::Context>) {
-        openvr::shutdown();
     }
 }
 
@@ -244,11 +239,16 @@ impl Ui {
 }
 
 fn main() -> eframe::Result<()> {
+    assert!(openvr::init());
+
     let mut opt = eframe::NativeOptions::default();
     opt.vsync = false;
-    eframe::run_native(
+    let result = eframe::run_native(
         "GraffitiVR",
         opt,
         Box::new(move |cc| Box::new(App::new(cc))),
-    )
+    );
+
+    openvr::shutdown();
+    result
 }
