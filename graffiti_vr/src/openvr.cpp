@@ -18,12 +18,16 @@ extern "C" vr::IVRSystem* vr_system() {
 	return vr::VRSystem();
 }
 
+extern "C" uint32_t vr_system_get_tracked_device_index_for_controller_role(vr::IVRSystem* self, uint32_t type) {
+	return self->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole(type));
+}
+
 extern "C" void vr_system_get_device_to_absolute_tracking_pose(vr::IVRSystem* self, vr::TrackedDevicePose_t* poses, uint32_t n) {
 	self->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0.0, poses, n);
 }
 
-extern "C" void vr_system_get_controller_state_with_pose(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state, vr::TrackedDevicePose_t* pose) {
-	self->GetControllerStateWithPose(vr::TrackingUniverseStanding, index, state, sizeof(vr::VRControllerState_t), pose);
+extern "C" bool vr_system_get_controller_state_with_pose(vr::IVRSystem* self, uint32_t index, vr::VRControllerState_t* state, vr::TrackedDevicePose_t* pose) {
+	return self->GetControllerStateWithPose(vr::TrackingUniverseStanding, index, state, sizeof(vr::VRControllerState_t), pose);
 }
 
 extern "C" vr::IVROverlay* vr_overlay() {

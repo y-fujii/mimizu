@@ -4,7 +4,7 @@ mod chatbox;
 mod egui_overlay;
 mod openvr;
 mod vr_input;
-use eframe::{egui, glow};
+use eframe::egui;
 use std::*;
 //use wana_kana::ConvertJapanese;
 
@@ -23,6 +23,7 @@ struct Ui {}
 struct App {
     time: time::Instant,
     model: Model,
+    system: openvr::System,
     vr_input: vr_input::VrInput,
     recognizer: graffiti_3d::GraffitiRecognizer,
     chatbox: Option<chatbox::ChatBox>,
@@ -65,7 +66,8 @@ impl App {
                 cursor: 0,
                 indicator: ' ',
             },
-            vr_input: vr_input::VrInput::new().unwrap(),
+            system: openvr::System::new(),
+            vr_input: vr_input::VrInput::new(),
             recognizer: graffiti_3d::GraffitiRecognizer::new(0.02),
             chatbox: chatbox::ChatBox::new().ok(),
             ui: Ui::new(&cc.egui_ctx, &overlay.context),
@@ -79,7 +81,7 @@ impl eframe::App for App {
         sleep_high_res(self.model.interval.saturating_sub(self.time.elapsed()));
         self.time = time::Instant::now();
 
-        self.vr_input.update();
+        self.vr_input.update(&self.system);
         self.model.current_strokes = self.vr_input.current_strokes();
 
         if let Some(stroke) = self.vr_input.pop_stroke() {

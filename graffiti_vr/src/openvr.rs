@@ -1,5 +1,7 @@
 use std::*;
 
+pub const TRACKED_CONTROLLER_ROLE_LEFT_HAND: u32 = 1;
+pub const TRACKED_CONTROLLER_ROLE_RIGHT_HAND: u32 = 2;
 pub const BUTTON_MASK_GRIP: u64 = 1 << 2;
 pub const BUTTON_MASK_TRIGGER: u64 = 1 << 33;
 pub const OVERLAY_FLAGS_PREMULTIPLIED: u32 = 1 << 21;
@@ -58,6 +60,7 @@ extern "C" {
     fn vr_shutdown();
 
     fn vr_system() -> *mut ffi::c_void;
+    fn vr_system_get_tracked_device_index_for_controller_role(_: *mut ffi::c_void, _: u32) -> u32;
     fn vr_system_get_device_to_absolute_tracking_pose(
         _: *mut ffi::c_void,
         _: *mut TrackedDevicePose,
@@ -68,7 +71,7 @@ extern "C" {
         _: u32,
         _: *mut VRControllerState,
         _: *mut TrackedDevicePose,
-    );
+    ) -> bool;
 
     fn vr_overlay() -> *mut ffi::c_void;
     fn vr_overlay_create(_: *mut ffi::c_void, _: *const u8, _: *const u8) -> usize;
@@ -118,6 +121,10 @@ impl System {
         let this = unsafe { vr_system() };
         assert!(!this.is_null());
         System { this: this }
+    }
+
+    pub fn get_tracked_device_index_for_controller_role(&self, typ: u32) -> u32 {
+        unsafe { vr_system_get_tracked_device_index_for_controller_role(self.this, typ) }
     }
 
     pub fn get_device_to_absolute_tracking_pose(&self, dst: &mut [TrackedDevicePose]) {
