@@ -104,14 +104,14 @@ impl GraffitiRecognizer {
                 self.modifier = GraffitiModifier::Caps;
                 None
             }
-            c => {
-                let c = match self.modifier {
-                    GraffitiModifier::Caps => c.to_ascii_uppercase(),
-                    _ => c,
-                };
-                self.modifier = GraffitiModifier::None;
-                Some(c)
-            }
+            '\x08' => match mem::replace(&mut self.modifier, GraffitiModifier::None) {
+                GraffitiModifier::None => Some('\x08'),
+                _ => None,
+            },
+            c => match mem::replace(&mut self.modifier, GraffitiModifier::None) {
+                GraffitiModifier::Caps => Some(c.to_ascii_uppercase()),
+                _ => Some(c),
+            },
         }
     }
 

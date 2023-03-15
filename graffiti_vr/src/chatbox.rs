@@ -33,7 +33,7 @@ impl ChatBox {
     }
 
     pub fn typing(&mut self, b: bool) {
-        self.typing = b;
+        self.typing |= b;
     }
 
     pub fn update(&mut self) {
@@ -52,6 +52,7 @@ impl ChatBox {
         osc_str(&mut buf, b"/chatbox/typing");
         osc_str(&mut buf, if self.typing { b",T" } else { b",F" });
         self.socket.send(&buf).ok();
+        self.typing = false;
 
         self.time = time::Instant::now();
     }
