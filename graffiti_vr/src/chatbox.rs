@@ -44,7 +44,7 @@ impl ChatBox {
 
         let mut buf = Vec::new();
         osc_str(&mut buf, b"/chatbox/input");
-        osc_str(&mut buf, b",sT");
+        osc_str(&mut buf, b",sTF");
         osc_str(&mut buf, self.input.as_bytes());
         self.socket.send(&buf).ok();
 

@@ -1,34 +1,19 @@
-use crate::*;
 use eframe::egui;
 use eframe::egui_glow;
 use eframe::glow;
 use eframe::glow::HasContext;
 use std::*;
 
-pub struct EguiOverlay {
-    pub size: [u32; 2],
-    pub context: egui::Context,
-    pub painter: egui_glow::Painter,
-    pub texture: glow::Texture,
-    pub framebuffer: glow::Framebuffer,
-    pub overlay: openvr::Overlay,
-    pub handle: usize,
+pub struct EguiTexture {
+    size: [u32; 2],
+    context: egui::Context,
+    painter: egui_glow::Painter,
+    texture: glow::Texture,
+    framebuffer: glow::Framebuffer,
 }
 
-impl Drop for EguiOverlay {
-    fn drop(&mut self) {
-        // XXX
-        self.overlay.destroy(self.handle);
-        unsafe {
-            let gl = self.painter.gl();
-            gl.delete_framebuffer(self.framebuffer);
-            gl.delete_texture(self.texture);
-        }
-    }
-}
-
-impl EguiOverlay {
-    pub fn new(gl: sync::Arc<glow::Context>, size: &[u32; 2], name: &[u8]) -> Self {
+impl EguiTexture {
+    pub fn new(gl: sync::Arc<glow::Context>, size: &[u32; 2]) -> Self {
         let tex;
         unsafe {
             tex = gl.create_texture().unwrap();
@@ -71,32 +56,16 @@ impl EguiOverlay {
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         }
 
-        let overlay = openvr::Overlay::new();
-        let handle = overlay.create(name, name);
-        overlay.set_flag(handle, openvr::OVERLAY_FLAGS_PREMULTIPLIED, true);
-
-        // XXX
-        overlay.set_width_in_meters(handle, 1.0);
-        let m = openvr::HmdMatrix34::from_nalgebra(&nalgebra::Matrix3x4::new(
-            1.0, 0.0, 0.0, 0.0, //
-            0.0, 1.0, 0.0, 0.0, //
-            0.0, 0.0, 1.0, -2.0, //
-        ));
-        overlay.set_transform_tracked_device_relative(handle, 0, &m);
-        overlay.show(handle);
-
-        EguiOverlay {
+        EguiTexture {
             size: *size,
             context: egui::Context::default(),
             painter: egui_glow::Painter::new(gl, "", None).unwrap(),
             texture: tex,
             framebuffer: fb,
-            overlay: overlay,
-            handle: handle,
         }
     }
 
-    pub fn run(&mut self, run_ui: impl FnOnce(&egui::Context)) {
+    pub fn run(&mut self, run_ui: impl FnOnce(&egui::Context)) -> time::Duration {
         let ppp = self.context.pixels_per_point();
         let mut input = egui::RawInput::default();
         input.screen_rect = Some(egui::Rect::from_min_size(
@@ -116,7 +85,23 @@ impl EguiOverlay {
             .paint_and_update_textures(self.size, ppp, &prims, &out.textures_delta);
         unsafe { self.painter.gl().bind_framebuffer(glow::FRAMEBUFFER, None) };
 
-        self.overlay
-            .set_texture(self.handle, self.texture.0.get() as usize);
+        out.repaint_after
+    }
+
+    pub fn context(&self) -> &egui::Context {
+        &self.context
+    }
+
+    pub fn texture(&self) -> glow::Texture {
+        self.texture
+    }
+
+    pub fn destroy(&mut self) {
+        self.painter.destroy();
+        unsafe {
+            let gl = self.painter.gl();
+            gl.delete_framebuffer(self.framebuffer);
+            gl.delete_texture(self.texture);
+        }
     }
 }

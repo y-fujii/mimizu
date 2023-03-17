@@ -1,4 +1,4 @@
-use crate::*;
+use crate::openvr;
 use std::*;
 
 type Vector2 = nalgebra::Vector2<f32>;
