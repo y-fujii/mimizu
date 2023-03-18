@@ -1,7 +1,6 @@
 use crate::model;
 use eframe::egui;
 use std::*;
-//use wana_kana::ConvertJapanese;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
@@ -19,34 +18,49 @@ impl Ui {
         Ui {}
     }
 
-    pub fn main(&self, ctx: &egui::Context, model: &model::Model) {
+    pub fn main(&self, ctx: &egui::Context, model: &mut model::Model) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.controls(ui, model);
             self.text(ui, model);
             self.plot(ui, model);
         });
     }
 
-    pub fn overlay(&self, ctx: &egui::Context, model: &model::Model) {
+    pub fn overlay(&self, ctx: &egui::Context, model: &mut model::Model) {
         let frame = egui::Frame::none();
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            self.controls(ui, model);
             self.text(ui, model);
             //self.plot(ui, model);
         });
     }
 
+    fn controls(&self, ui: &mut egui::Ui, model: &mut model::Model) {
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut model.is_active, "Active");
+            ui.checkbox(&mut model.use_chatbox, "Use Chatbox");
+            egui::ComboBox::from_id_source(egui::Id::new("CharClass"))
+                .selected_text(format!("{:?}", model.char_class))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut model.char_class,
+                        model::CharClass::Alphabet,
+                        "Alphabet",
+                    );
+                    ui.selectable_value(
+                        &mut model.char_class,
+                        model::CharClass::Hiragana,
+                        "Hiragana",
+                    );
+                });
+        });
+    }
+
     fn text(&self, ui: &mut egui::Ui, model: &model::Model) {
-        let lhs = model.text[..model.cursor]
-            .iter()
-            .collect::<String>()
-            /*.to_hiragana()*/;
-        let rhs = model.text[model.cursor..]
-            .iter()
-            .collect::<String>()
-            /*.to_hiragana()*/;
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 1.0;
             ui.label(
-                egui::RichText::new(lhs)
+                egui::RichText::new(model.text_l())
                     .size(24.0)
                     .color(egui::Color32::from_rgb(255, 255, 255)),
             );
@@ -57,7 +71,7 @@ impl Ui {
                     .background_color(egui::Color32::from_rgb(128, 192, 255)),
             );
             ui.label(
-                egui::RichText::new(rhs)
+                egui::RichText::new(model.text_r())
                     .size(24.0)
                     .color(egui::Color32::from_rgb(255, 255, 255)),
             );

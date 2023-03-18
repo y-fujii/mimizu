@@ -1,13 +1,21 @@
 use std::*;
-//use wana_kana::ConvertJapanese;
 
 type Vector2 = nalgebra::Vector2<f32>;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CharClass {
+    Alphabet,
+    Hiragana,
+}
 
 pub struct Model {
     pub recognizer: graffiti_3d::GraffitiRecognizer,
     pub current_strokes: [Vec<Vector2>; 2],
     pub text: Vec<char>,
     pub cursor: usize,
+    pub is_active: bool,
+    pub use_chatbox: bool,
+    pub char_class: CharClass,
 }
 
 impl Model {
@@ -17,6 +25,9 @@ impl Model {
             current_strokes: [Vec::new(), Vec::new()],
             text: Vec::new(),
             cursor: 0,
+            is_active: true,
+            use_chatbox: true,
+            char_class: CharClass::Alphabet,
         }
     }
 
@@ -45,6 +56,22 @@ impl Model {
                 self.text.insert(self.cursor, c);
                 self.cursor += 1;
             }
+        }
+    }
+
+    pub fn text_l(&self) -> String {
+        self.translate(self.text[..self.cursor].iter().collect())
+    }
+
+    pub fn text_r(&self) -> String {
+        self.translate(self.text[self.cursor..].iter().collect())
+    }
+
+    fn translate(&self, s: String) -> String {
+        use wana_kana::ConvertJapanese;
+        match self.char_class {
+            CharClass::Alphabet => s,
+            CharClass::Hiragana => s.to_hiragana(),
         }
     }
 }

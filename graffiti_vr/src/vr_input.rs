@@ -30,6 +30,9 @@ impl VrInput {
                 openvr::TRACKED_CONTROLLER_ROLE_RIGHT_HAND,
             ),
         ];
+        if indices[0] == !0 || indices[1] == !0 {
+            return;
+        }
         let size = cmp::max(indices[0], indices[1]) as usize + 1;
         let mut poses = vec![openvr::TrackedDevicePose::default(); size];
         let controllers = [

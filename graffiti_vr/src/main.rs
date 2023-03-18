@@ -8,7 +8,6 @@ mod ui;
 mod vr_input;
 use eframe::{egui, glow};
 use std::*;
-//use wana_kana::ConvertJapanese;
 
 struct App {
     interval: time::Duration,
@@ -77,25 +76,30 @@ impl eframe::App for App {
         self.time = time::Instant::now();
 
         self.vr_input.update(&self.system);
-        self.model.current_strokes = self.vr_input.current_strokes();
-        if let Some(stroke) = self.vr_input.pop_stroke() {
-            self.model.feed_stroke(&stroke);
-        }
-
-        if let Some(ref mut chatbox) = self.chatbox {
-            let text: String = self.model.text.iter().collect();
-            chatbox.input(text /*.to_hiragana()*/);
-            chatbox.typing(self.model.current_strokes.iter().any(|s| s.len() > 0));
-            chatbox.update();
+        if self.model.is_active {
+            self.model.current_strokes = self.vr_input.current_strokes();
+            if let Some(stroke) = self.vr_input.pop_stroke() {
+                self.model.feed_stroke(&stroke);
+            }
+        } else {
+            self.model.current_strokes = [Vec::new(), Vec::new()];
         }
 
         self.overlay_texture
-            .run(|ctx| self.ui.overlay(ctx, &self.model));
+            .run(|ctx| self.ui.overlay(ctx, &mut self.model));
         self.overlay.set_texture(
             self.overlay_handle,
             self.overlay_texture.texture().0.get() as usize,
         );
-        self.ui.main(ctx, &self.model);
+        self.ui.main(ctx, &mut self.model);
+
+        if self.model.use_chatbox {
+            if let Some(ref mut chatbox) = self.chatbox {
+                chatbox.input(format!("{}{}", self.model.text_l(), self.model.text_r()));
+                chatbox.typing(self.model.current_strokes.iter().any(|s| s.len() > 0));
+                chatbox.update();
+            }
+        }
 
         ctx.request_repaint();
     }
