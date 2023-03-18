@@ -44,7 +44,7 @@ impl App {
         let overlay_texture =
             egui_texture::EguiTexture::new(cc.gl.as_ref().unwrap().clone(), &[512, 512]);
 
-        let overlay_handle = overlay.create(b"GraffitiVR\0", b"GraffitiVR\0");
+        let overlay_handle = overlay.create(b"TegakiVR\0", b"TegakiVR\0");
         overlay.set_flag(overlay_handle, openvr::OVERLAY_FLAGS_PREMULTIPLIED, true);
         overlay.set_width_in_meters(overlay_handle, 1.0);
         let m = openvr::HmdMatrix34::from_nalgebra(&nalgebra::Matrix3x4::new(
@@ -116,7 +116,7 @@ fn main() -> eframe::Result<()> {
     let mut opt = eframe::NativeOptions::default();
     opt.vsync = false;
     let result = eframe::run_native(
-        "GraffitiVR",
+        "TegakiVR",
         opt,
         Box::new(move |cc| Box::new(App::new(cc))),
     );

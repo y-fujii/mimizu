@@ -5,7 +5,7 @@ type Vector2 = nalgebra::Vector2<f32>;
 
 pub struct VrInput {
     buttons: [bool; 2],
-    projector: [graffiti_3d::StrokeProjector; 2],
+    projector: [tegaki::StrokeProjector; 2],
     strokes: collections::VecDeque<Vec<Vector2>>,
 }
 
@@ -14,8 +14,8 @@ impl VrInput {
         VrInput {
             buttons: [false, false],
             projector: [
-                graffiti_3d::StrokeProjector::new(),
-                graffiti_3d::StrokeProjector::new(),
+                tegaki::StrokeProjector::new(),
+                tegaki::StrokeProjector::new(),
             ],
             strokes: collections::VecDeque::new(),
         }

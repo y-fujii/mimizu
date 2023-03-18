@@ -112,10 +112,10 @@ impl Ui {
 
     fn indicator(&self, model: &model::Model) -> char {
         match model.recognizer.modifier() {
-            graffiti_3d::GraffitiModifier::Symbol => '.',
-            graffiti_3d::GraffitiModifier::Caps => '^',
-            graffiti_3d::GraffitiModifier::None => match model.recognizer.mode() {
-                graffiti_3d::GraffitiMode::Number => '#',
+            tegaki::GraffitiModifier::Symbol => '.',
+            tegaki::GraffitiModifier::Caps => '^',
+            tegaki::GraffitiModifier::None => match model.recognizer.mode() {
+                tegaki::GraffitiMode::Number => '#',
                 _ => ' ',
             },
         }

@@ -1,5 +1,5 @@
 [package]
-name = "graffiti_vr"
+name = "tegaki_vr"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,4 +10,4 @@ cc = "*"
 nalgebra = "*"
 eframe = "*"
 wana_kana = "*"
-graffiti_3d = { path = "../graffiti_3d" }
+tegaki = { path = "../tegaki" }
