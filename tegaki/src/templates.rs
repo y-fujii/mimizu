@@ -58,7 +58,7 @@ pub const NUMBERS: [(char, &[u8]); 17] = [
 ];
 
 #[rustfmt::skip]
-pub const SYMBOLS: [(char, &[u8]); 32] = [
+pub const SYMBOLS: [(char, &[u8]); 33] = [
     ('?', b"\x04\x05\x16\x26\x36\x45\x44\x22\x20"),
     (',', b"\x46\x00"),
     ('\'', b"\x06\x00"),
@@ -91,4 +91,5 @@ pub const SYMBOLS: [(char, &[u8]); 32] = [
     ('|', b"\x20\x16\x00"),
     ('/', b"\x00\x46"),
     ('\t', b"\x00\x06\x46"),
+    ('\x08', b"\x43\x03"),
 ];

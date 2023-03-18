@@ -42,9 +42,9 @@ impl App {
         let overlay = openvr::Overlay::new();
 
         let overlay_texture =
-            egui_texture::EguiTexture::new(cc.gl.as_ref().unwrap().clone(), &[512, 512]);
+            egui_texture::EguiTexture::new(cc.gl.as_ref().unwrap().clone(), &[512, 256]);
 
-        let overlay_handle = overlay.create(b"TegakiVR\0", b"TegakiVR\0");
+        let overlay_handle = overlay.create(b"Tegaki\0", b"Tegaki\0");
         overlay.set_flag(overlay_handle, openvr::OVERLAY_FLAGS_PREMULTIPLIED, true);
         overlay.set_width_in_meters(overlay_handle, 1.0);
         let m = openvr::HmdMatrix34::from_nalgebra(&nalgebra::Matrix3x4::new(
@@ -105,8 +105,8 @@ impl eframe::App for App {
     }
 
     fn on_exit(&mut self, _: Option<&glow::Context>) {
-        self.overlay_texture.destroy();
         self.overlay.destroy(self.overlay_handle);
+        self.overlay_texture.destroy();
     }
 }
 
@@ -115,11 +115,7 @@ fn main() -> eframe::Result<()> {
 
     let mut opt = eframe::NativeOptions::default();
     opt.vsync = false;
-    let result = eframe::run_native(
-        "TegakiVR",
-        opt,
-        Box::new(move |cc| Box::new(App::new(cc))),
-    );
+    let result = eframe::run_native("Tegaki", opt, Box::new(move |cc| Box::new(App::new(cc))));
 
     openvr::shutdown();
     result
