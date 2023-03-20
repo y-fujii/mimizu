@@ -1,5 +1,5 @@
 [package]
-name = "tegaki_vr"
+name = "mimizu_vr"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,4 +10,4 @@ cc = "*"
 nalgebra = "*"
 eframe = "*"
 wana_kana = "*"
-tegaki = { path = "../tegaki" }
+mimizu = { path = "../mimizu" }

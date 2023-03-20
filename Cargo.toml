@@ -1,2 +1,7 @@
 [workspace]
-members = ["tegaki", "tegaki_vr"]
+members = ["mimizu", "mimizu_vr"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "symbols"

@@ -37,14 +37,14 @@ fn sleep_high_res(d: time::Duration) {
 }
 
 impl App {
-    fn new(cc: &eframe::CreationContext) -> Self {
+    fn new(cc: &eframe::CreationContext, name: &[u8]) -> Self {
         let system = openvr::System::new();
         let overlay = openvr::Overlay::new();
 
         let overlay_texture =
             egui_texture::EguiTexture::new(cc.gl.as_ref().unwrap().clone(), &[512, 256]);
 
-        let overlay_handle = overlay.create(b"Tegaki\0", b"Tegaki\0");
+        let overlay_handle = overlay.create(name, name);
         overlay.set_flag(overlay_handle, openvr::OVERLAY_FLAGS_PREMULTIPLIED, true);
         overlay.set_width_in_meters(overlay_handle, 1.0);
         let m = openvr::HmdMatrix34::from_nalgebra(&nalgebra::Matrix3x4::new(
@@ -115,7 +115,11 @@ fn main() -> eframe::Result<()> {
 
     let mut opt = eframe::NativeOptions::default();
     opt.vsync = false;
-    let result = eframe::run_native("Tegaki", opt, Box::new(move |cc| Box::new(App::new(cc))));
+    let result = eframe::run_native(
+        "mimizu",
+        opt,
+        Box::new(move |cc| Box::new(App::new(cc, b"mimizu\0"))),
+    );
 
     openvr::shutdown();
     result

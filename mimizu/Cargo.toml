@@ -1,5 +1,5 @@
 [package]
-name = "tegaki"
+name = "mimizu"
 version = "0.1.0"
 authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
 edition = "2021"

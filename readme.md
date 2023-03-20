@@ -1,6 +1,6 @@
-# Tegaki
+# mimizu
 
-Tegaki is a single-stroke handwriting recognizer for VR (WIP).
+mimizu is a single-stroke handwriting recognizer for VR (WIP).
 
 ## Usage
 

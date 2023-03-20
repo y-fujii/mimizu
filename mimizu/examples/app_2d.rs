@@ -2,7 +2,7 @@ use eframe::egui;
 use std::*;
 
 struct App {
-    recognizer: tegaki::GraffitiRecognizer,
+    recognizer: mimizu::GraffitiRecognizer,
     stroke: Vec<egui::Vec2>,
     letter: Option<char>,
 }
@@ -10,7 +10,7 @@ struct App {
 impl App {
     fn new() -> Self {
         App {
-            recognizer: tegaki::GraffitiRecognizer::new(16.0),
+            recognizer: mimizu::GraffitiRecognizer::new(16.0),
             stroke: Vec::new(),
             letter: None,
         }
@@ -49,7 +49,7 @@ impl eframe::App for App {
                 let stroke: Vec<_> = self
                     .stroke
                     .iter()
-                    .map(|v| tegaki::Vector2::new(v.x, -v.y))
+                    .map(|v| mimizu::Vector2::new(v.x, -v.y))
                     .collect();
                 let now = time::Instant::now();
                 self.letter = self.recognizer.recognize(&stroke);

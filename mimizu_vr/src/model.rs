@@ -9,7 +9,7 @@ pub enum CharClass {
 }
 
 pub struct Model {
-    pub recognizer: tegaki::GraffitiRecognizer,
+    pub recognizer: mimizu::GraffitiRecognizer,
     pub current_strokes: [Vec<Vector2>; 2],
     pub text: Vec<char>,
     pub cursor: usize,
@@ -21,7 +21,7 @@ pub struct Model {
 impl Model {
     pub fn new() -> Self {
         Model {
-            recognizer: tegaki::GraffitiRecognizer::new(0.02),
+            recognizer: mimizu::GraffitiRecognizer::new(0.02),
             current_strokes: [Vec::new(), Vec::new()],
             text: Vec::new(),
             cursor: 0,
