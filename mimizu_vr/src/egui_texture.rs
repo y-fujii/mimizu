@@ -1,7 +1,4 @@
-use eframe::egui;
-use eframe::egui_glow;
-use eframe::glow;
-use eframe::glow::HasContext;
+use eframe::{egui, egui_glow, glow, glow::HasContext};
 use std::*;
 
 pub struct EguiTexture {

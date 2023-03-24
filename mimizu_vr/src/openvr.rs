@@ -60,7 +60,7 @@ extern "C" {
     fn vr_shutdown();
 
     fn vr_system() -> *mut ffi::c_void;
-    fn vr_system_get_tracked_device_index_for_controller_role(_: *mut ffi::c_void, _: u32) -> u32;
+    fn vr_system_get_tracked_device_index_for_controller_role(_: *mut ffi::c_void, _: u32) -> i32;
     fn vr_system_get_device_to_absolute_tracking_pose(
         _: *mut ffi::c_void,
         _: *mut TrackedDevicePose,
@@ -68,7 +68,7 @@ extern "C" {
     );
     fn vr_system_get_controller_state_with_pose(
         _: *mut ffi::c_void,
-        _: u32,
+        _: i32,
         _: *mut VRControllerState,
         _: *mut TrackedDevicePose,
     ) -> bool;
@@ -85,6 +85,7 @@ extern "C" {
     ) -> bool;
     fn vr_overlay_set_texture(_: *mut ffi::c_void, _: usize, _: usize) -> bool;
     fn vr_overlay_show(_: *mut ffi::c_void, _: usize) -> bool;
+    fn vr_overlay_hide(_: *mut ffi::c_void, _: usize) -> bool;
     fn vr_overlay_destroy(_: *mut ffi::c_void, _: usize) -> bool;
 }
 
@@ -123,7 +124,7 @@ impl System {
         System { this: this }
     }
 
-    pub fn get_tracked_device_index_for_controller_role(&self, typ: u32) -> u32 {
+    pub fn get_tracked_device_index_for_controller_role(&self, typ: u32) -> i32 {
         unsafe { vr_system_get_tracked_device_index_for_controller_role(self.this, typ) }
     }
 
@@ -137,7 +138,7 @@ impl System {
         };
     }
 
-    pub fn get_controller_state_with_pose(&self, n: u32) -> (VRControllerState, TrackedDevicePose) {
+    pub fn get_controller_state_with_pose(&self, n: i32) -> (VRControllerState, TrackedDevicePose) {
         let mut state = Default::default();
         let mut pose = Default::default();
         unsafe { vr_system_get_controller_state_with_pose(self.this, n, &mut state, &mut pose) };
@@ -183,6 +184,10 @@ impl Overlay {
 
     pub fn show(&self, handle: usize) -> bool {
         unsafe { vr_overlay_show(self.this, handle) }
+    }
+
+    pub fn hide(&self, handle: usize) -> bool {
+        unsafe { vr_overlay_hide(self.this, handle) }
     }
 
     pub fn destroy(&self, handle: usize) -> bool {

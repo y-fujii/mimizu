@@ -25,13 +25,14 @@ impl Model {
             current_strokes: [Vec::new(), Vec::new()],
             text: Vec::new(),
             cursor: 0,
-            is_active: true,
+            is_active: false,
             use_chatbox: true,
             char_class: CharClass::Alphabet,
         }
     }
 
-    pub fn feed_stroke(&mut self, stroke: &[Vector2]) {
+    pub fn feed_stroke(&mut self, stroke: &[Vector2], _mode: mimizu::GraffitiMode) {
+        dbg!(_mode);
         let Some(c) = self.recognizer.recognize(&stroke) else {
             return;
         };

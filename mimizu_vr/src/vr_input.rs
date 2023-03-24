@@ -1,27 +1,35 @@
-use crate::openvr;
+use crate::{model, openvr};
 use std::*;
 
-type Vector2 = nalgebra::Vector2<f32>;
+struct ControllerState {
+    n_buttons: u32,
+    mode: Option<mimizu::GraffitiMode>,
+    projector: mimizu::StrokeProjector,
+}
 
 pub struct VrInput {
-    buttons: [bool; 2],
-    projector: [mimizu::StrokeProjector; 2],
-    strokes: collections::VecDeque<Vec<Vector2>>,
+    states: [ControllerState; 2],
 }
 
 impl VrInput {
     pub fn new() -> VrInput {
         VrInput {
-            buttons: [false, false],
-            projector: [
-                mimizu::StrokeProjector::new(),
-                mimizu::StrokeProjector::new(),
+            states: [
+                ControllerState {
+                    n_buttons: 0,
+                    mode: None,
+                    projector: mimizu::StrokeProjector::new(),
+                },
+                ControllerState {
+                    n_buttons: 0,
+                    mode: None,
+                    projector: mimizu::StrokeProjector::new(),
+                },
             ],
-            strokes: collections::VecDeque::new(),
         }
     }
 
-    pub fn update(&mut self, system: &openvr::System) {
+    pub fn update(&mut self, system: &openvr::System, model: &mut model::Model) {
         let indices = [
             system.get_tracked_device_index_for_controller_role(
                 openvr::TRACKED_CONTROLLER_ROLE_LEFT_HAND,
@@ -30,10 +38,7 @@ impl VrInput {
                 openvr::TRACKED_CONTROLLER_ROLE_RIGHT_HAND,
             ),
         ];
-        if indices[0] == !0 || indices[1] == !0 {
-            return;
-        }
-        let size = cmp::max(indices[0], indices[1]) as usize + 1;
+        let size = cmp::max(cmp::max(indices[0], indices[1]), 1) as usize + 1;
         let mut poses = vec![openvr::TrackedDevicePose::default(); size];
         let controllers = [
             system.get_controller_state_with_pose(indices[0]),
@@ -41,34 +46,57 @@ impl VrInput {
         ];
         system.get_device_to_absolute_tracking_pose(&mut poses);
 
-        let head = poses[0].device_to_absolute_tracking.to_nalgebra();
+        let mut n_buttons = [0; 2];
         for i in 0..2 {
-            let button = controllers[i].0.button_pressed
-                & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER)
-                != 0;
-            if button != self.buttons[i] {
-                let hand = controllers[i].1.device_to_absolute_tracking.to_nalgebra();
-                self.projector[i].feed(&hand, &head);
+            n_buttons[i] = (controllers[i].0.button_pressed
+                & (openvr::BUTTON_MASK_GRIP | openvr::BUTTON_MASK_TRIGGER))
+                .count_ones();
+        }
+
+        if n_buttons.iter().all(|n| *n == 2) && self.states.iter().any(|s| s.n_buttons < 2) {
+            model.is_active ^= true;
+            for state in self.states.iter_mut() {
+                state.projector.clear();
+                state.mode = None;
             }
-            if button {
-                let hand = poses[indices[i] as usize]
+        } else if model.is_active {
+            let head = poses[0].device_to_absolute_tracking.to_nalgebra();
+            for (i, state) in self.states.iter_mut().enumerate() {
+                let pose_key = controllers[i].1.device_to_absolute_tracking.to_nalgebra();
+                let pose_now = poses[indices[i] as usize]
                     .device_to_absolute_tracking
                     .to_nalgebra();
-                self.projector[i].feed(&hand, &head);
+                match (n_buttons[i].cmp(&state.n_buttons), state.mode) {
+                    (cmp::Ordering::Less, Some(mode)) => {
+                        state.projector.feed(&pose_key, &head);
+                        model.feed_stroke(&state.projector.stroke(), mode);
+                        state.projector.clear();
+                        state.mode = None;
+                    }
+                    (cmp::Ordering::Greater, _) => {
+                        state.projector.clear();
+                        state.mode = Some(match n_buttons[i] {
+                            1 => mimizu::GraffitiMode::Alphabet,
+                            2 => mimizu::GraffitiMode::Number,
+                            _ => unreachable!(),
+                        });
+                        state.projector.feed(&pose_key, &head);
+                        state.projector.feed(&pose_now, &head);
+                    }
+                    (cmp::Ordering::Equal, Some(_)) => {
+                        state.projector.feed(&pose_now, &head);
+                    }
+                    _ => (),
+                }
             }
-            if (self.buttons[i], button) == (true, false) {
-                self.strokes.push_back(self.projector[i].stroke());
-                self.projector[i].clear();
-            }
-            self.buttons[i] = button;
         }
-    }
 
-    pub fn current_strokes(&self) -> [Vec<Vector2>; 2] {
-        [self.projector[0].stroke(), self.projector[1].stroke()]
-    }
-
-    pub fn pop_stroke(&mut self) -> Option<Vec<Vector2>> {
-        self.strokes.pop_front()
+        for (i, state) in self.states.iter_mut().enumerate() {
+            state.n_buttons = n_buttons[i];
+        }
+        model.current_strokes = [
+            self.states[0].projector.stroke(),
+            self.states[1].projector.stroke(),
+        ];
     }
 }
