@@ -2,7 +2,7 @@ use std::*;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CharClass {
     Alphabet,
     Hiragana,

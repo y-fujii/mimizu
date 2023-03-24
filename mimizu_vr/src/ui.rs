@@ -21,8 +21,16 @@ impl Ui {
     pub fn main(&self, ctx: &egui::Context, model: &mut model::Model) {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.controls(ui, model);
-            self.text(ui, model);
-            self.plot(ui, model);
+            if model.is_active {
+                self.text(ui, model);
+                self.plot(ui, model);
+            } else {
+                ui.centered_and_justified(|ui| {
+                    ui.label(
+                        "Press the grips and triggers of both hands simultaneously to activate.",
+                    )
+                });
+            }
         });
     }
 
@@ -39,18 +47,19 @@ impl Ui {
         ui.horizontal(|ui| {
             ui.checkbox(&mut model.is_active, "Active");
             ui.checkbox(&mut model.use_chatbox, "Use Chatbox");
+            let labels = ["Alphabet", "ひらがな"];
             egui::ComboBox::from_id_source(egui::Id::new("CharClass"))
-                .selected_text(format!("{:?}", model.char_class))
+                .selected_text(labels[model.char_class as usize])
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut model.char_class,
                         model::CharClass::Alphabet,
-                        "Alphabet",
+                        labels[0],
                     );
                     ui.selectable_value(
                         &mut model.char_class,
                         model::CharClass::Hiragana,
-                        "Hiragana",
+                        labels[1],
                     );
                 });
         });
@@ -128,8 +137,8 @@ impl Ui {
             egui::FontData::from_static(include_bytes!("../assets/mplus-1c-regular-sub.ttf"))
                 .tweak(egui::FontTweak {
                     scale: 1.0,
-                    y_offset_factor: 0.0,
-                    y_offset: -12.0,
+                    y_offset_factor: -0.375,
+                    y_offset: 0.0,
                 }),
         );
         font.families
