@@ -1,0 +1,44 @@
+name: ci
+on: [push]
+jobs:
+  ci_win64:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-openvr
+            mingw-w64-ucrt-x86_64-7zip
+      - run: cargo test
+      - run: cargo build --release
+      - run: |
+          mkdir artifacts
+          cd artifacts
+          cp ../target/release/mimizu_vr.exe .
+          cp /ucrt64/bin/libgcc_s_seh-1.dll  .
+          cp /ucrt64/bin/libwinpthread-1.dll .
+          cp /ucrt64/bin/libstdc++-6.dll     .
+          cp /ucrt64/bin/libopenvr_api.dll   .
+          7z a ../mimizu_vr_win64.zip *
+      - uses: actions/upload-artifact@v3
+        with:
+          path: mimizu_vr_win64.zip
+
+  ci_linux64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt -y install libopenvr-dev
+      - run: cargo test
+      - run: cargo build --release
+      - run: tar czf mimizu_vr_linux64.tar.gz -C target/release mimizu_vr
+      - uses: actions/upload-artifact@v3
+        with:
+          path: mimizu_vr_linux64.tar.gz
