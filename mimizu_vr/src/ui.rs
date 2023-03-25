@@ -48,13 +48,13 @@ impl Ui {
         ui.horizontal(|ui| {
             ui.checkbox(&mut model.is_active, "Active");
             ui.checkbox(&mut model.use_chatbox, "Use Chatbox");
-            let labels = ["Alphabet", "ひらがな"];
+            let labels = ["Latin", "ひらがな"];
             egui::ComboBox::from_id_source(egui::Id::new("CharClass"))
                 .selected_text(labels[model.char_class as usize])
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut model.char_class,
-                        model::CharClass::Alphabet,
+                        model::CharClass::Latin,
                         labels[0],
                     );
                     ui.selectable_value(

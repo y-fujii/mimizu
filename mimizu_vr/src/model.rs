@@ -5,7 +5,7 @@ type Vector2 = nalgebra::Vector2<f32>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CharClass {
-    Alphabet,
+    Latin,
     Hiragana,
 }
 
@@ -28,7 +28,7 @@ impl Model {
             cursor: 0,
             is_active: false,
             use_chatbox: true,
-            char_class: CharClass::Alphabet,
+            char_class: CharClass::Latin,
         }
     }
 
@@ -72,7 +72,7 @@ impl Model {
     fn translate(&self, s: String) -> String {
         use wana_kana::ConvertJapanese;
         match self.char_class {
-            CharClass::Alphabet => s,
+            CharClass::Latin => s,
             CharClass::Hiragana => s.to_hiragana(),
         }
     }
