@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 mod graffiti;
 mod projector;
 mod recognizer;

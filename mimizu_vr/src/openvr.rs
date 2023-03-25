@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 
 pub const TRACKED_CONTROLLER_ROLE_LEFT_HAND: u32 = 1;

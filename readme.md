@@ -1,15 +1,18 @@
 # mimizu
 
-mimizu is a single-stroke handwriting recognizer for VR (WIP).  You can enter characters by writing strokes in the air.
+mimizu is a single-stroke handwriting recognizer for VR (WIP).  You can enter
+the characters by writing strokes in the air.
 
 ## Usage
 
-mimizu works on the OpenVR (SteamVR), which is the only API that supports overlay applications (in my understanding).
+mimizu works on the OpenVR (SteamVR), which is the only API that supports
+overlay applications (in my understanding).
 
-Currently the strokes are mostly compatible with [Palm Graffiti](https://upload.wikimedia.org/wikipedia/commons/6/68/Palm_Graffiti_gestures.png).
+Currently the strokes are mostly compatible with
+ [Palm Graffiti](https://upload.wikimedia.org/wikipedia/commons/6/68/Palm_Graffiti_gestures.png).
 
-- Press the grips and triggers of both hands to activate/deactivate the program.
-- Both trigger and grip buttons can be used to write strokes.
+- Press the grips and triggers of both hands simultaneously to activate/deactivate the program.
+- Either trigger or grip buttons can be used to write strokes.
 - Two-stroke "X" is not supported.  Use a mirrored stroke of "K".
 - Extended character mode is not supported.
 - Write backslash (top-left to right-bottom line) to enter the numeric input mode.

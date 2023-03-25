@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::recognizer::*;
 use crate::{templates, Vector2};
 use std::*;

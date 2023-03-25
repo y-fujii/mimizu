@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use eframe::{egui, egui_glow, glow, glow::HasContext};
 use std::*;
 

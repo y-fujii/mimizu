@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod chatbox;

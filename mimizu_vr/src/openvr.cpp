@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #if defined(__MINGW32__)
 	#include <openvr/openvr_mingw.hpp>
 #else

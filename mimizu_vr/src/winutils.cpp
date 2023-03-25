@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #if defined(_WIN32)
 
 #include <cstdint>

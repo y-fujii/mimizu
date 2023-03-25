@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 #[rustfmt::skip]
 pub const ALPHABETS: [(char, &[u8]); 34] = [
     ('a', b"\x00\x26\x40"),

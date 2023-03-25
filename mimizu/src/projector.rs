@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use crate::{Matrix2x3, Matrix3, Matrix3x4, Vector2, Vector3, Vector4};
 use std::*;
 
