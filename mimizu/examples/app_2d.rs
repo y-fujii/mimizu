@@ -69,7 +69,7 @@ impl eframe::App for App {
 
 fn main() -> eframe::Result<()> {
     eframe::run_native(
-        "Graffiti",
+        "mimizu_2d",
         eframe::NativeOptions::default(),
         Box::new(|_| Box::new(App::new())),
     )

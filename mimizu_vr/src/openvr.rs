@@ -1,11 +1,35 @@
 // (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 
-pub const TRACKED_CONTROLLER_ROLE_LEFT_HAND: u32 = 1;
-pub const TRACKED_CONTROLLER_ROLE_RIGHT_HAND: u32 = 2;
 pub const BUTTON_MASK_GRIP: u64 = 1 << 2;
 pub const BUTTON_MASK_TRIGGER: u64 = 1 << 33;
-pub const OVERLAY_FLAGS_PREMULTIPLIED: u32 = 1 << 21;
+pub const OVERLAY_FLAGS_IS_PREMULTIPLIED: u32 = 1 << 21;
+
+#[repr(C)]
+pub enum ApplicationType {
+    Overlay = 2,
+}
+
+#[repr(C)]
+pub enum TrackingUniverseOrigin {
+    Standing = 1,
+}
+
+#[repr(C)]
+pub enum TrackedControllerRole {
+    LeftHand = 1,
+    RightHand = 2,
+}
+
+#[repr(C)]
+pub enum TextureType {
+    OpenGL = 1,
+}
+
+#[repr(C)]
+pub enum ColorSpace {
+    Auto = 0,
+}
 
 // note: the structs in "openvr.h" are defined with "#pragma pack(8)".
 
@@ -48,54 +72,53 @@ pub struct TrackedDevicePose {
     pub device_is_connected: bool,
 }
 
-pub struct System {
-    this: *mut ffi::c_void,
+#[repr(C)]
+pub struct Texture {
+    pub handle: usize,
+    pub type_: TextureType,
+    pub color_space: ColorSpace,
 }
 
-pub struct Overlay {
-    this: *mut ffi::c_void,
+#[repr(C)]
+struct SystemFnTable {
+    _dummy_0: [usize; 11],
+    get_device_to_absolute_tracking_pose: extern "system" fn(i32, f32, *mut TrackedDevicePose, u32),
+    _dummy_1: [usize; 5],
+    get_tracked_device_index_for_controller_role: extern "system" fn(i32) -> i32,
+    _dummy_2: [usize; 16],
+    get_controller_state_with_pose:
+        extern "system" fn(i32, i32, *mut VRControllerState, u32, *mut TrackedDevicePose) -> bool,
 }
 
+#[repr(C)]
+struct OverlayFnTable {
+    _dummy_0: [usize; 1],
+    create_overlay: extern "system" fn(*const u8, *const u8, *mut u64) -> i32,
+    destroy_overlay: extern "system" fn(u64) -> i32,
+    _dummy_1: [usize; 7],
+    set_overlay_flag: extern "system" fn(u64, u32, bool) -> i32,
+    _dummy_2: [usize; 10],
+    set_overlay_width_in_meters: extern "system" fn(u64, f32) -> i32,
+    _dummy_3: [usize; 12],
+    set_overlay_transform_tracked_device_relative:
+        extern "system" fn(u64, u32, *const HmdMatrix34) -> i32,
+    _dummy_4: [usize; 8],
+    show_overlay: extern "system" fn(u64) -> i32,
+    hide_overlay: extern "system" fn(u64) -> i32,
+    _dummy_5: [usize; 15],
+    set_overlay_texture: extern "system" fn(u64, *const Texture) -> i32,
+}
+
+pub struct OpenVr {
+    system: *const SystemFnTable,
+    overlay: *const OverlayFnTable,
+}
+
+#[link(name = "openvr_api")]
 extern "C" {
-    fn vr_init() -> bool;
-    fn vr_shutdown();
-
-    fn vr_system() -> *mut ffi::c_void;
-    fn vr_system_get_tracked_device_index_for_controller_role(_: *mut ffi::c_void, _: u32) -> i32;
-    fn vr_system_get_device_to_absolute_tracking_pose(
-        _: *mut ffi::c_void,
-        _: *mut TrackedDevicePose,
-        _: u32,
-    );
-    fn vr_system_get_controller_state_with_pose(
-        _: *mut ffi::c_void,
-        _: i32,
-        _: *mut VRControllerState,
-        _: *mut TrackedDevicePose,
-    ) -> bool;
-
-    fn vr_overlay() -> *mut ffi::c_void;
-    fn vr_overlay_create(_: *mut ffi::c_void, _: *const u8, _: *const u8) -> usize;
-    fn vr_overlay_set_flag(_: *mut ffi::c_void, _: usize, _: u32, _: bool) -> bool;
-    fn vr_overlay_set_width_in_meters(_: *mut ffi::c_void, _: usize, _: f32) -> bool;
-    fn vr_overlay_set_transform_tracked_device_relative(
-        _: *mut ffi::c_void,
-        _: usize,
-        _: u32,
-        _: *const HmdMatrix34,
-    ) -> bool;
-    fn vr_overlay_set_texture(_: *mut ffi::c_void, _: usize, _: usize) -> bool;
-    fn vr_overlay_show(_: *mut ffi::c_void, _: usize) -> bool;
-    fn vr_overlay_hide(_: *mut ffi::c_void, _: usize) -> bool;
-    fn vr_overlay_destroy(_: *mut ffi::c_void, _: usize) -> bool;
-}
-
-pub fn init() -> bool {
-    unsafe { vr_init() }
-}
-
-pub fn shutdown() {
-    unsafe { vr_shutdown() }
+    fn VR_InitInternal2(_: *mut i32, _: i32, _: *const u8) -> u32;
+    fn VR_ShutdownInternal();
+    fn VR_GetGenericInterface(_: *const u8, _: *mut i32) -> *const ffi::c_void;
 }
 
 impl HmdMatrix34 {
@@ -118,80 +141,118 @@ impl HmdMatrix34 {
     }
 }
 
-impl System {
-    pub fn new() -> Self {
-        let this = unsafe { vr_system() };
-        assert!(!this.is_null());
-        System { this: this }
+impl Drop for OpenVr {
+    fn drop(&mut self) {
+        unsafe { VR_ShutdownInternal() }
+    }
+}
+
+impl OpenVr {
+    pub fn new(app_type: ApplicationType) -> Option<Self> {
+        let mut err = 0;
+        unsafe { VR_InitInternal2(&mut err, app_type as i32, ptr::null()) };
+        if err != 0 {
+            return None;
+        }
+        let system =
+            unsafe { VR_GetGenericInterface(b"FnTable:IVRSystem_022\0".as_ptr(), &mut err) }
+                as *const SystemFnTable;
+        if system.is_null() {
+            return None;
+        }
+        let overlay =
+            unsafe { VR_GetGenericInterface(b"FnTable:IVROverlay_026\0".as_ptr(), &mut err) }
+                as *const OverlayFnTable;
+        if overlay.is_null() {
+            return None;
+        }
+        Some(OpenVr {
+            system: system,
+            overlay: overlay,
+        })
     }
 
-    pub fn get_tracked_device_index_for_controller_role(&self, typ: u32) -> i32 {
-        unsafe { vr_system_get_tracked_device_index_for_controller_role(self.this, typ) }
+    pub fn get_tracked_device_index_for_controller_role(&self, role: TrackedControllerRole) -> i32 {
+        unsafe { ((*self.system).get_tracked_device_index_for_controller_role)(role as i32) }
     }
 
-    pub fn get_device_to_absolute_tracking_pose(&self, dst: &mut [TrackedDevicePose]) {
+    pub fn get_device_to_absolute_tracking_pose(
+        &self,
+        origin: TrackingUniverseOrigin,
+        secs: f32,
+        dst: &mut [TrackedDevicePose],
+    ) {
         unsafe {
-            vr_system_get_device_to_absolute_tracking_pose(
-                self.this,
+            ((*self.system).get_device_to_absolute_tracking_pose)(
+                origin as i32,
+                secs,
                 dst.as_mut_ptr(),
                 dst.len() as u32,
             )
         };
     }
 
-    pub fn get_controller_state_with_pose(&self, n: i32) -> (VRControllerState, TrackedDevicePose) {
+    pub fn get_controller_state_with_pose(
+        &self,
+        origin: TrackingUniverseOrigin,
+        n: i32,
+    ) -> (VRControllerState, TrackedDevicePose) {
         let mut state = Default::default();
         let mut pose = Default::default();
-        unsafe { vr_system_get_controller_state_with_pose(self.this, n, &mut state, &mut pose) };
+        unsafe {
+            ((*self.system).get_controller_state_with_pose)(
+                origin as i32,
+                n,
+                &mut state,
+                mem::size_of::<VRControllerState>() as u32,
+                &mut pose,
+            )
+        };
         (state, pose)
     }
-}
 
-impl Overlay {
-    pub fn new() -> Self {
-        let this = unsafe { vr_overlay() };
-        assert!(!this.is_null());
-        Overlay { this: this }
-    }
-
-    pub fn create(&self, key: &[u8], name: &[u8]) -> usize {
+    pub fn create_overlay(&self, key: &[u8], name: &[u8]) -> u64 {
         assert!(key.last() == Some(&b'\0'));
         assert!(name.last() == Some(&b'\0'));
-        unsafe { vr_overlay_create(self.this, key.as_ptr(), name.as_ptr()) }
+        let mut handle = 0;
+        unsafe { ((*self.overlay).create_overlay)(key.as_ptr(), name.as_ptr(), &mut handle) };
+        handle
     }
 
-    pub fn set_flag(&self, handle: usize, flag: u32, enabled: bool) -> bool {
-        unsafe { vr_overlay_set_flag(self.this, handle, flag, enabled) }
+    pub fn set_overlay_flag(&self, handle: u64, flag: u32, enabled: bool) -> bool {
+        unsafe { ((*self.overlay).set_overlay_flag)(handle, flag, enabled) == 0 }
     }
 
-    pub fn set_width_in_meters(&self, handle: usize, width: f32) -> bool {
-        unsafe { vr_overlay_set_width_in_meters(self.this, handle, width) }
+    pub fn set_overlay_width_in_meters(&self, handle: u64, width: f32) -> bool {
+        unsafe { ((*self.overlay).set_overlay_width_in_meters)(handle, width) == 0 }
     }
 
-    pub fn set_transform_tracked_device_relative(
+    pub fn set_overlay_transform_tracked_device_relative(
         &self,
-        handle: usize,
+        handle: u64,
         device: u32,
         transform: &HmdMatrix34,
     ) -> bool {
         unsafe {
-            vr_overlay_set_transform_tracked_device_relative(self.this, handle, device, transform)
+            ((*self.overlay).set_overlay_transform_tracked_device_relative)(
+                handle, device, transform,
+            ) == 0
         }
     }
 
-    pub fn set_texture(&self, handle: usize, tex_handle: usize) -> bool {
-        unsafe { vr_overlay_set_texture(self.this, handle, tex_handle) }
+    pub fn set_overlay_texture(&self, handle: u64, texture: &Texture) -> bool {
+        unsafe { ((*self.overlay).set_overlay_texture)(handle, texture) == 0 }
     }
 
-    pub fn show(&self, handle: usize) -> bool {
-        unsafe { vr_overlay_show(self.this, handle) }
+    pub fn show_overlay(&self, handle: u64) -> bool {
+        unsafe { ((*self.overlay).show_overlay)(handle) == 0 }
     }
 
-    pub fn hide(&self, handle: usize) -> bool {
-        unsafe { vr_overlay_hide(self.this, handle) }
+    pub fn hide_overlay(&self, handle: u64) -> bool {
+        unsafe { ((*self.overlay).hide_overlay)(handle) == 0 }
     }
 
-    pub fn destroy(&self, handle: usize) -> bool {
-        unsafe { vr_overlay_destroy(self.this, handle) }
+    pub fn destroy_overlay(&self, handle: u64) -> bool {
+        unsafe { ((*self.overlay).destroy_overlay)(handle) == 0 }
     }
 }

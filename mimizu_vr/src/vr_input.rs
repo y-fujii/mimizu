@@ -30,22 +30,32 @@ impl VrInput {
         }
     }
 
-    pub fn update(&mut self, system: &openvr::System, model: &mut model::Model) {
+    pub fn update(&mut self, openvr: &openvr::OpenVr, model: &mut model::Model) {
         let indices = [
-            system.get_tracked_device_index_for_controller_role(
-                openvr::TRACKED_CONTROLLER_ROLE_LEFT_HAND,
+            openvr.get_tracked_device_index_for_controller_role(
+                openvr::TrackedControllerRole::LeftHand,
             ),
-            system.get_tracked_device_index_for_controller_role(
-                openvr::TRACKED_CONTROLLER_ROLE_RIGHT_HAND,
+            openvr.get_tracked_device_index_for_controller_role(
+                openvr::TrackedControllerRole::RightHand,
             ),
         ];
         let size = cmp::max(cmp::max(indices[0], indices[1]), 1) as usize + 1;
         let mut poses = vec![openvr::TrackedDevicePose::default(); size];
         let controllers = [
-            system.get_controller_state_with_pose(indices[0]),
-            system.get_controller_state_with_pose(indices[1]),
+            openvr.get_controller_state_with_pose(
+                openvr::TrackingUniverseOrigin::Standing,
+                indices[0],
+            ),
+            openvr.get_controller_state_with_pose(
+                openvr::TrackingUniverseOrigin::Standing,
+                indices[1],
+            ),
         ];
-        system.get_device_to_absolute_tracking_pose(&mut poses);
+        openvr.get_device_to_absolute_tracking_pose(
+            openvr::TrackingUniverseOrigin::Standing,
+            0.0,
+            &mut poses,
+        );
 
         let mut n_buttons = [0; 2];
         for i in 0..2 {

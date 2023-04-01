@@ -12,10 +12,12 @@ pub enum CharClass {
 pub struct Model {
     pub recognizer: mimizu::GraffitiRecognizer,
     pub current_strokes: [Vec<Vector2>; 2],
+    pub new_char: Option<char>,
     pub text: Vec<char>,
     pub cursor: usize,
     pub is_active: bool,
     pub use_chatbox: bool,
+    pub use_key_emulation: bool,
     pub char_class: CharClass,
 }
 
@@ -24,10 +26,12 @@ impl Model {
         Model {
             recognizer: mimizu::GraffitiRecognizer::new(0.02),
             current_strokes: [Vec::new(), Vec::new()],
+            new_char: None,
             text: Vec::new(),
             cursor: 0,
             is_active: false,
             use_chatbox: true,
+            use_key_emulation: false,
             char_class: CharClass::Latin,
         }
     }
@@ -59,6 +63,7 @@ impl Model {
                 self.cursor += 1;
             }
         }
+        self.new_char = Some(c);
     }
 
     pub fn text_l(&self) -> String {

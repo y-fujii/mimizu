@@ -21,5 +21,5 @@ Currently the strokes are mostly compatible with
 ## Protocol
 
 - [VRChat OSC Chatbox](https://docs.vrchat.com/docs/osc-as-input-controller) (UDP port 9000).
-- (not implemented yet) Keyboard input emulation?
+- Keyboard input emulation.
 - (not implemented yet) WebSocket server?

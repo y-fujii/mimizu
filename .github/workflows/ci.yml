@@ -1,7 +1,7 @@
 name: ci
 on: [push]
 jobs:
-  ci_win64:
+  ci_windows_x64:
     runs-on: windows-latest
     defaults:
       run:
@@ -26,19 +26,19 @@ jobs:
           cp /ucrt64/bin/libwinpthread-1.dll .
           cp /ucrt64/bin/libstdc++-6.dll     .
           cp /ucrt64/bin/libopenvr_api.dll   .
-          7z a ../mimizu_vr_win64.zip *
+          7z a ../mimizu_vr_windows_x64.zip *
       - uses: actions/upload-artifact@v3
         with:
-          path: mimizu_vr_win64.zip
+          path: mimizu_vr_windows_x64.zip
 
-  ci_linux64:
+  ci_linux_x64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt -y install libopenvr-dev
       - run: cargo test
       - run: cargo build --release
-      - run: tar czf mimizu_vr_linux64.tar.gz -C target/release mimizu_vr
+      - run: tar czf mimizu_vr_linux_x64.tar.gz -C target/release mimizu_vr
       - uses: actions/upload-artifact@v3
         with:
-          path: mimizu_vr_linux64.tar.gz
+          path: mimizu_vr_linux_x64.tar.gz

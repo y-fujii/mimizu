@@ -47,16 +47,13 @@ impl Ui {
     fn controls(&self, ui: &mut egui::Ui, model: &mut model::Model) {
         ui.horizontal(|ui| {
             ui.checkbox(&mut model.is_active, "Active");
-            ui.checkbox(&mut model.use_chatbox, "Use Chatbox");
+            ui.checkbox(&mut model.use_chatbox, "OSC Chatbox");
+            ui.checkbox(&mut model.use_key_emulation, "Keyboard emulation");
             let labels = ["Latin", "ひらがな"];
             egui::ComboBox::from_id_source(egui::Id::new("CharClass"))
                 .selected_text(labels[model.char_class as usize])
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut model.char_class,
-                        model::CharClass::Latin,
-                        labels[0],
-                    );
+                    ui.selectable_value(&mut model.char_class, model::CharClass::Latin, labels[0]);
                     ui.selectable_value(
                         &mut model.char_class,
                         model::CharClass::Hiragana,
