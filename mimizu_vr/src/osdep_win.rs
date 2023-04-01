@@ -1,3 +1,4 @@
+// (c) Yasuhiro Fujii <http://mimosa-pudica.net>, under MIT License.
 use std::*;
 use windows_sys::Win32::{
     Foundation::*, System::Threading::*, System::WindowsProgramming::*,
