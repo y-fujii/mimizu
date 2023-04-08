@@ -82,12 +82,18 @@ pub struct Texture {
 #[repr(C)]
 struct SystemFnTable {
     _dummy_0: [usize; 11],
-    get_device_to_absolute_tracking_pose: extern "system" fn(i32, f32, *mut TrackedDevicePose, u32),
+    get_device_to_absolute_tracking_pose:
+        extern "system" fn(TrackingUniverseOrigin, f32, *mut TrackedDevicePose, u32),
     _dummy_1: [usize; 5],
-    get_tracked_device_index_for_controller_role: extern "system" fn(i32) -> i32,
+    get_tracked_device_index_for_controller_role: extern "system" fn(TrackedControllerRole) -> i32,
     _dummy_2: [usize; 16],
-    get_controller_state_with_pose:
-        extern "system" fn(i32, i32, *mut VRControllerState, u32, *mut TrackedDevicePose) -> bool,
+    get_controller_state_with_pose: extern "system" fn(
+        TrackingUniverseOrigin,
+        i32,
+        *mut VRControllerState,
+        u32,
+        *mut TrackedDevicePose,
+    ) -> bool,
 }
 
 #[repr(C)]
@@ -116,7 +122,7 @@ pub struct OpenVr {
 
 #[link(name = "openvr_api")]
 extern "C" {
-    fn VR_InitInternal2(_: *mut i32, _: i32, _: *const u8) -> u32;
+    fn VR_InitInternal2(_: *mut i32, _: ApplicationType, _: *const u8) -> u32;
     fn VR_ShutdownInternal();
     fn VR_GetGenericInterface(_: *const u8, _: *mut i32) -> *const ffi::c_void;
 }
@@ -148,32 +154,32 @@ impl Drop for OpenVr {
 }
 
 impl OpenVr {
-    pub fn new(app_type: ApplicationType) -> Option<Self> {
+    pub fn new(app_type: ApplicationType) -> io::Result<Self> {
         let mut err = 0;
-        unsafe { VR_InitInternal2(&mut err, app_type as i32, ptr::null()) };
-        if err != 0 {
-            return None;
-        }
+        unsafe { VR_InitInternal2(&mut err, app_type, ptr::null()) };
+        Self::result(err)?;
         let system =
             unsafe { VR_GetGenericInterface(b"FnTable:IVRSystem_022\0".as_ptr(), &mut err) }
                 as *const SystemFnTable;
         if system.is_null() {
-            return None;
+            unsafe { VR_ShutdownInternal() };
+            Self::result(err)?;
         }
         let overlay =
             unsafe { VR_GetGenericInterface(b"FnTable:IVROverlay_026\0".as_ptr(), &mut err) }
                 as *const OverlayFnTable;
         if overlay.is_null() {
-            return None;
+            unsafe { VR_ShutdownInternal() };
+            Self::result(err)?;
         }
-        Some(OpenVr {
+        Ok(OpenVr {
             system: system,
             overlay: overlay,
         })
     }
 
     pub fn get_tracked_device_index_for_controller_role(&self, role: TrackedControllerRole) -> i32 {
-        unsafe { ((*self.system).get_tracked_device_index_for_controller_role)(role as i32) }
+        unsafe { ((*self.system).get_tracked_device_index_for_controller_role)(role) }
     }
 
     pub fn get_device_to_absolute_tracking_pose(
@@ -184,7 +190,7 @@ impl OpenVr {
     ) {
         unsafe {
             ((*self.system).get_device_to_absolute_tracking_pose)(
-                origin as i32,
+                origin,
                 secs,
                 dst.as_mut_ptr(),
                 dst.len() as u32,
@@ -201,7 +207,7 @@ impl OpenVr {
         let mut pose = Default::default();
         unsafe {
             ((*self.system).get_controller_state_with_pose)(
-                origin as i32,
+                origin,
                 n,
                 &mut state,
                 mem::size_of::<VRControllerState>() as u32,
@@ -211,20 +217,22 @@ impl OpenVr {
         (state, pose)
     }
 
-    pub fn create_overlay(&self, key: &[u8], name: &[u8]) -> u64 {
+    pub fn create_overlay(&self, key: &[u8], name: &[u8]) -> io::Result<u64> {
         assert!(key.last() == Some(&b'\0'));
         assert!(name.last() == Some(&b'\0'));
         let mut handle = 0;
-        unsafe { ((*self.overlay).create_overlay)(key.as_ptr(), name.as_ptr(), &mut handle) };
-        handle
+        Self::result(unsafe {
+            ((*self.overlay).create_overlay)(key.as_ptr(), name.as_ptr(), &mut handle)
+        })?;
+        Ok(handle)
     }
 
-    pub fn set_overlay_flag(&self, handle: u64, flag: u32, enabled: bool) -> bool {
-        unsafe { ((*self.overlay).set_overlay_flag)(handle, flag, enabled) == 0 }
+    pub fn set_overlay_flag(&self, handle: u64, flag: u32, enabled: bool) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).set_overlay_flag)(handle, flag, enabled) })
     }
 
-    pub fn set_overlay_width_in_meters(&self, handle: u64, width: f32) -> bool {
-        unsafe { ((*self.overlay).set_overlay_width_in_meters)(handle, width) == 0 }
+    pub fn set_overlay_width_in_meters(&self, handle: u64, width: f32) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).set_overlay_width_in_meters)(handle, width) })
     }
 
     pub fn set_overlay_transform_tracked_device_relative(
@@ -232,27 +240,35 @@ impl OpenVr {
         handle: u64,
         device: u32,
         transform: &HmdMatrix34,
-    ) -> bool {
-        unsafe {
+    ) -> io::Result<()> {
+        Self::result(unsafe {
             ((*self.overlay).set_overlay_transform_tracked_device_relative)(
                 handle, device, transform,
-            ) == 0
+            )
+        })
+    }
+
+    pub fn set_overlay_texture(&self, handle: u64, texture: &Texture) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).set_overlay_texture)(handle, texture) })
+    }
+
+    pub fn show_overlay(&self, handle: u64) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).show_overlay)(handle) })
+    }
+
+    pub fn hide_overlay(&self, handle: u64) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).hide_overlay)(handle) })
+    }
+
+    pub fn destroy_overlay(&self, handle: u64) -> io::Result<()> {
+        Self::result(unsafe { ((*self.overlay).destroy_overlay)(handle) })
+    }
+
+    pub fn result(err: i32) -> io::Result<()> {
+        if err == 0 {
+            Ok(())
+        } else {
+            Err(io::ErrorKind::Other.into())
         }
-    }
-
-    pub fn set_overlay_texture(&self, handle: u64, texture: &Texture) -> bool {
-        unsafe { ((*self.overlay).set_overlay_texture)(handle, texture) == 0 }
-    }
-
-    pub fn show_overlay(&self, handle: u64) -> bool {
-        unsafe { ((*self.overlay).show_overlay)(handle) == 0 }
-    }
-
-    pub fn hide_overlay(&self, handle: u64) -> bool {
-        unsafe { ((*self.overlay).hide_overlay)(handle) == 0 }
-    }
-
-    pub fn destroy_overlay(&self, handle: u64) -> bool {
-        unsafe { ((*self.overlay).destroy_overlay)(handle) == 0 }
     }
 }
