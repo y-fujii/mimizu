@@ -69,18 +69,18 @@ impl Ui {
             ui.label(
                 egui::RichText::new(model.text_l())
                     .size(24.0)
-                    .color(egui::Color32::from_rgb(255, 255, 255)),
+                    .color(ui.visuals().strong_text_color()),
             );
             ui.label(
                 egui::RichText::new(self.indicator(model))
                     .size(24.0)
-                    .color(egui::Color32::from_rgb(0, 0, 0))
-                    .background_color(egui::Color32::from_rgb(128, 192, 255)),
+                    .color(ui.visuals().strong_text_color())
+                    .background_color(ui.visuals().selection.bg_fill),
             );
             ui.label(
                 egui::RichText::new(model.text_r())
                     .size(24.0)
-                    .color(egui::Color32::from_rgb(255, 255, 255)),
+                    .color(ui.visuals().strong_text_color()),
             );
         });
     }
@@ -105,7 +105,7 @@ impl Ui {
             let scale = (r_max - r_min).component_div(&(s_max - s_min)).min();
             let offset = 0.5 * ((r_max + r_min) - scale * (s_max + s_min));
 
-            let egui_stroke = egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 255, 255));
+            let egui_stroke = egui::Stroke::new(2.0, ui.visuals().text_color());
             for i in 0..stroke.len() - 1 {
                 let v0 = scale * v2_invert_y(stroke[i + 0]) + offset;
                 let v1 = scale * v2_invert_y(stroke[i + 1]) + offset;
@@ -132,12 +132,7 @@ impl Ui {
         let mut font = egui::FontDefinitions::default();
         font.font_data.insert(
             "mplus".to_owned(),
-            egui::FontData::from_static(include_bytes!("../assets/mplus-1c-regular-sub.ttf"))
-                .tweak(egui::FontTweak {
-                    scale: 1.0,
-                    y_offset_factor: -0.375,
-                    y_offset: 0.0,
-                }),
+            egui::FontData::from_static(include_bytes!("../assets/mplus-1c-regular-sub.ttf")),
         );
         font.families
             .get_mut(&egui::FontFamily::Monospace)
