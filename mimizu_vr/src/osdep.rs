@@ -9,7 +9,7 @@ pub fn emulate_key(_: char) {}
 
 #[cfg(windows)]
 pub fn sleep(dur: time::Duration) {
-    use windows_sys::Win32::{Foundation::*, System::Threading::*, System::WindowsProgramming::*};
+    use windows_sys::Win32::{Foundation::*, System::Threading::*};
 
     thread_local!(static TIMER: HANDLE = {
         let timer = unsafe {

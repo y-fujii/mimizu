@@ -83,7 +83,7 @@ impl Recognizer {
         let mut best_idx = None;
         let mut best_sim = 0.0;
         for (i, template) in self.templates.iter().enumerate() {
-            let sim = tangents_similarity(&input, &template, 0.25);
+            let sim = tangents_similarity(&input, template, 0.25);
             if sim > best_sim {
                 best_sim = sim;
                 best_idx = Some(i);
@@ -98,7 +98,7 @@ impl Recognizer {
 
         self.templates
             .iter()
-            .map(|t| tangents_similarity(&input, &t, 0.25))
+            .map(|t| tangents_similarity(&input, t, 0.25))
             .collect()
     }
 }

@@ -11,7 +11,7 @@ pub struct EguiTexture {
 }
 
 impl EguiTexture {
-    pub fn new(gl: sync::Arc<glow::Context>, size: &[u32; 2]) -> Self {
+    pub fn new(gl: rc::Rc<glow::Context>, size: &[u32; 2]) -> Self {
         let tex;
         unsafe {
             tex = gl.create_texture().unwrap();
@@ -63,15 +63,17 @@ impl EguiTexture {
         }
     }
 
-    pub fn run(&mut self, run_ui: impl FnOnce(&egui::Context)) -> time::Duration {
+    pub fn run(&mut self, run_ui: impl FnOnce(&egui::Context)) {
         let ppp = self.context.pixels_per_point();
-        let mut input = egui::RawInput::default();
-        input.screen_rect = Some(egui::Rect::from_min_size(
-            Default::default(),
-            egui::Vec2::new(self.size[0] as f32, self.size[1] as f32) / ppp,
-        ));
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                Default::default(),
+                egui::Vec2::new(self.size[0] as f32, self.size[1] as f32) / ppp,
+            )),
+            ..Default::default()
+        };
         let out = self.context.run(input, run_ui);
-        let prims = self.context.tessellate(out.shapes);
+        let prims = self.context.tessellate(out.shapes, ppp);
 
         unsafe {
             let gl = self.painter.gl();
@@ -82,8 +84,6 @@ impl EguiTexture {
         self.painter
             .paint_and_update_textures(self.size, ppp, &prims, &out.textures_delta);
         unsafe { self.painter.gl().bind_framebuffer(glow::FRAMEBUFFER, None) };
-
-        out.repaint_after
     }
 
     pub fn context(&self) -> &egui::Context {

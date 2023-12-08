@@ -107,13 +107,12 @@ impl eframe::App for App {
 }
 
 fn main() -> eframe::Result<()> {
-    let mut opt = eframe::NativeOptions::default();
-    opt.vsync = false;
-    let result = eframe::run_native(
+    eframe::run_native(
         "mimizu",
-        opt,
+        eframe::NativeOptions {
+            vsync: false,
+            ..Default::default()
+        },
         Box::new(move |cc| Box::new(App::new(cc, b"mimizu\0").unwrap())),
-    );
-
-    result
+    )
 }

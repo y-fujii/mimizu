@@ -38,7 +38,7 @@ impl Model {
 
     pub fn feed_stroke(&mut self, stroke: &[Vector2], _mode: mimizu::GraffitiMode) {
         dbg!(_mode);
-        let Some(c) = self.recognizer.recognize(&stroke) else {
+        let Some(c) = self.recognizer.recognize(stroke) else {
             return;
         };
         match c {
