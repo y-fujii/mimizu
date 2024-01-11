@@ -11,7 +11,7 @@ pub struct EguiTexture {
 }
 
 impl EguiTexture {
-    pub fn new(gl: rc::Rc<glow::Context>, size: &[u32; 2]) -> Self {
+    pub fn new(gl: sync::Arc<glow::Context>, size: &[u32; 2]) -> Self {
         let tex;
         unsafe {
             tex = gl.create_texture().unwrap();
