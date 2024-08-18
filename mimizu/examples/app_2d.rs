@@ -71,6 +71,6 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "mimizu_2d",
         eframe::NativeOptions::default(),
-        Box::new(|_| Box::new(App::new())),
+        Box::new(|_| Ok(Box::new(App::new()))),
     )
 }
