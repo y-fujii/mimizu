@@ -113,6 +113,6 @@ fn main() -> eframe::Result<()> {
             vsync: false,
             ..Default::default()
         },
-        Box::new(move |cc| Box::new(App::new(cc, b"mimizu\0").unwrap())),
+        Box::new(move |cc| Ok(Box::new(App::new(cc, b"mimizu\0")?))),
     )
 }

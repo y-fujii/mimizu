@@ -2,7 +2,14 @@
 resolver = "2"
 members = ["mimizu", "mimizu_vr"]
 
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+overflow-checks = false
+debug = false
+
 [profile.release]
-lto = true
 codegen-units = 1
-strip = "symbols"
+lto = true
+strip = true

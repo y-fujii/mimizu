@@ -20,7 +20,7 @@ pub fn sleep(dur: time::Duration) {
                 TIMER_ALL_ACCESS,
             )
         };
-        if timer == 0 {
+        if timer.is_null() {
             panic!();
         }
         timer
