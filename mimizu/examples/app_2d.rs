@@ -57,7 +57,7 @@ impl eframe::App for App {
                 self.stroke.clear();
             }
 
-            let stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 255, 255));
+            let stroke = egui::Stroke::new(1.0, ui.visuals().text_color());
             for i in 0..cmp::max(self.stroke.len(), 1) - 1 {
                 let x0 = self.stroke[i + 0];
                 let x1 = self.stroke[i + 1];

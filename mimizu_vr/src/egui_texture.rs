@@ -57,13 +57,13 @@ impl EguiTexture {
         EguiTexture {
             size: *size,
             context: egui::Context::default(),
-            painter: egui_glow::Painter::new(gl, "", None).unwrap(),
+            painter: egui_glow::Painter::new(gl, "", None, false).unwrap(),
             texture: tex,
             framebuffer: fb,
         }
     }
 
-    pub fn run(&mut self, run_ui: impl FnOnce(&egui::Context)) {
+    pub fn run(&mut self, run_ui: impl FnMut(&egui::Context)) {
         let ppp = self.context.pixels_per_point();
         let input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
