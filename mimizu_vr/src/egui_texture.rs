@@ -25,7 +25,7 @@ impl EguiTexture {
                 0,
                 glow::RGBA,
                 glow::UNSIGNED_BYTE,
-                None,
+                glow::PixelUnpackData::Slice(None),
             );
             gl.tex_parameter_i32(
                 glow::TEXTURE_2D,

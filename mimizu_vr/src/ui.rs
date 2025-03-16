@@ -36,7 +36,7 @@ impl Ui {
     }
 
     pub fn overlay(&self, ctx: &egui::Context, model: &mut model::Model) {
-        let frame = egui::Frame::none();
+        let frame = egui::Frame::new();
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             self.controls(ui, model);
             self.text(ui, model);
@@ -132,7 +132,9 @@ impl Ui {
         let mut font = egui::FontDefinitions::default();
         font.font_data.insert(
             "mplus".to_owned(),
-            egui::FontData::from_static(include_bytes!("../assets/mplus-1c-regular-sub.ttf")),
+            sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../assets/mplus-1c-regular-sub.ttf"
+            ))),
         );
         font.families
             .get_mut(&egui::FontFamily::Monospace)
