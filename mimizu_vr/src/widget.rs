@@ -5,22 +5,22 @@ use std::*;
 
 type Vector2 = nalgebra::Vector2<f32>;
 
-pub struct Ui {}
+pub struct Widget {}
 
 fn v2_invert_y(v: Vector2) -> Vector2 {
     Vector2::new(v[0], -v[1])
 }
 
-impl Ui {
+impl Widget {
     pub fn new(ctx_main: &egui::Context, ctx_overlay: &egui::Context) -> Self {
         Self::add_font_ja(ctx_main);
         Self::add_font_ja(ctx_overlay);
 
-        Ui {}
+        Widget {}
     }
 
-    pub fn main(&self, ctx: &egui::Context, model: &mut model::Model) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    pub fn main(&self, ui: &mut egui::Ui, model: &mut model::Model) {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             self.controls(ui, model);
             if model.is_active {
                 self.text(ui, model);
@@ -35,13 +35,15 @@ impl Ui {
         });
     }
 
-    pub fn overlay(&self, ctx: &egui::Context, model: &mut model::Model) {
+    pub fn overlay(&self, ui: &mut egui::Ui, model: &mut model::Model) {
         let frame = egui::Frame::new();
-        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-            self.controls(ui, model);
-            self.text(ui, model);
-            //self.plot(ui, model);
-        });
+        egui::CentralPanel::default()
+            .frame(frame)
+            .show_inside(ui, |ui| {
+                self.controls(ui, model);
+                self.text(ui, model);
+                //self.plot(ui, model);
+            });
     }
 
     fn controls(&self, ui: &mut egui::Ui, model: &mut model::Model) {

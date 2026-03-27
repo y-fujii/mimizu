@@ -63,7 +63,7 @@ impl EguiTexture {
         }
     }
 
-    pub fn run(&mut self, run_ui: impl FnMut(&egui::Context)) {
+    pub fn run(&mut self, run_ui: impl FnMut(&mut egui::Ui)) {
         let ppp = self.context.pixels_per_point();
         let input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
@@ -72,7 +72,7 @@ impl EguiTexture {
             )),
             ..Default::default()
         };
-        let out = self.context.run(input, run_ui);
+        let out = self.context.run_ui(input, run_ui);
         let prims = self.context.tessellate(out.shapes, ppp);
 
         unsafe {

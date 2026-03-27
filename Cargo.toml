@@ -1,13 +1,11 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = ["mimizu", "mimizu_vr"]
-
-[profile.dev]
-opt-level = 1
 
 [profile.dev.package."*"]
 overflow-checks = false
 debug = false
+opt-level = 1
 
 [profile.release]
 codegen-units = 1

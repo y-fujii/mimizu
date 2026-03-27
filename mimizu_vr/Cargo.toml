@@ -1,20 +1,18 @@
 [package]
 name = "mimizu_vr"
-version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-nalgebra = "*"
-eframe = "*"
-wana_kana = "*"
+nalgebra = { version = "*", default-features = false, features = ["std"] }
+wana_kana = { version = "*", default-features = false }
+eframe = { version = "*", default-features = false, features = ["default_fonts", "wayland", "glow"] }
 mimizu = { path = "../mimizu" }
 
-[target."cfg(windows)".dependencies.windows-sys]
-version = "*"
-features = [
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "*", default-features = false, features = [
 	"Win32_Foundation",
 	"Win32_Security",
 	"Win32_System_Threading",
 	"Win32_System_WindowsProgramming",
 	"Win32_UI_Input_KeyboardAndMouse",
-]
+] }

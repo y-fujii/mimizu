@@ -121,7 +121,7 @@ pub struct OpenVr {
 }
 
 #[link(name = "openvr_api")]
-extern "C" {
+unsafe extern "C" {
     fn VR_InitInternal2(_: *mut i32, _: ApplicationType, _: *const u8) -> u32;
     fn VR_ShutdownInternal();
     fn VR_GetGenericInterface(_: *const u8, _: *mut i32) -> *const ffi::c_void;

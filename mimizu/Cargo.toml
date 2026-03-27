@@ -1,11 +1,9 @@
 [package]
 name = "mimizu"
-version = "0.1.0"
-authors = ["Yasuhiro Fujii <y-fujii@mimosa-pudica.net>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-nalgebra = "*"
+nalgebra = { version = "*", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-eframe = "*"
+eframe = { version = "*", default-features = false, features = ["default_fonts", "wayland", "glow"] }

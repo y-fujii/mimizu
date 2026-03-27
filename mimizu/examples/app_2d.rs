@@ -18,8 +18,8 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        egui::SidePanel::left("side_panel").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+        egui::Panel::left("side_panel").show_inside(ui, |ui| {
             egui::Grid::new("grid").show(ui, |ui| {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label("Letter:")
@@ -38,7 +38,7 @@ impl eframe::App for App {
                 ui.end_row();
             });
         });
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             let (response, painter) =
                 ui.allocate_painter(ui.available_size_before_wrap(), egui::Sense::drag());
             let origin = response.rect.min;

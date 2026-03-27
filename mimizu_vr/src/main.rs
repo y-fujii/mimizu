@@ -6,8 +6,8 @@ mod egui_texture;
 mod model;
 mod openvr;
 mod osdep;
-mod ui;
 mod vr_input;
+mod widget;
 use eframe::{egui, glow};
 use std::*;
 
@@ -17,7 +17,7 @@ struct App {
     model: model::Model,
     openvr: openvr::OpenVr,
     vr_input: vr_input::VrInput,
-    ui: ui::Ui,
+    widget: widget::Widget,
     overlay_texture: egui_texture::EguiTexture,
     overlay_handle: u64,
     chatbox: Option<chatbox::ChatBox>,
@@ -45,7 +45,7 @@ impl App {
             model: model::Model::new(),
             openvr: openvr,
             vr_input: vr_input::VrInput::new(),
-            ui: ui::Ui::new(&cc.egui_ctx, overlay_texture.context()),
+            widget: widget::Widget::new(&cc.egui_ctx, overlay_texture.context()),
             overlay_texture: overlay_texture,
             overlay_handle: overlay_handle,
             chatbox: chatbox::ChatBox::new().ok(),
@@ -54,7 +54,7 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         osdep::sleep(self.interval.saturating_sub(self.time.elapsed()));
         self.time = time::Instant::now();
 
@@ -62,7 +62,7 @@ impl eframe::App for App {
 
         if self.model.is_active {
             self.overlay_texture
-                .run(|ctx| self.ui.overlay(ctx, &mut self.model));
+                .run(|ctx| self.widget.overlay(ctx, &mut self.model));
             self.openvr
                 .set_overlay_texture(
                     self.overlay_handle,
@@ -78,7 +78,7 @@ impl eframe::App for App {
             self.openvr.hide_overlay(self.overlay_handle).ok();
         }
 
-        self.ui.main(ctx, &mut self.model);
+        self.widget.main(ui, &mut self.model);
 
         if self.model.is_active {
             if self.model.use_key_emulation {
@@ -96,7 +96,7 @@ impl eframe::App for App {
         }
 
         self.model.new_chars.clear();
-        ctx.request_repaint();
+        ui.request_repaint();
     }
 
     fn on_exit(&mut self, _: Option<&glow::Context>) {
