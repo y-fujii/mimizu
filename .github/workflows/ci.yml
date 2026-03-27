@@ -15,7 +15,6 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-rust
             mingw-w64-ucrt-x86_64-openvr
-            mingw-w64-ucrt-x86_64-7zip
       - run: cargo test
       - run: cargo build --release
       - run: |
@@ -26,10 +25,10 @@ jobs:
           cp /ucrt64/bin/libwinpthread-1.dll .
           cp /ucrt64/bin/libstdc++-6.dll     .
           cp /ucrt64/bin/libopenvr_api.dll   .
-          7z a ../mimizu_vr_windows_x64.zip *
       - uses: actions/upload-artifact@v6
         with:
-          path: mimizu_vr_windows_x64.zip
+          name: windows_x64
+          path: artifacts/*
 
   ci_linux_x64:
     runs-on: ubuntu-latest
@@ -38,7 +37,7 @@ jobs:
       - run: sudo apt -y install libopenvr-dev
       - run: cargo test
       - run: cargo build --release
-      - run: tar czf mimizu_vr_linux_x64.tar.gz -C target/release mimizu_vr
       - uses: actions/upload-artifact@v6
         with:
-          path: mimizu_vr_linux_x64.tar.gz
+          name: linux_x64
+          path: target/release/mimizu_vr
