@@ -8,7 +8,7 @@ mod openvr;
 mod osdep;
 mod vr_input;
 mod widget;
-use eframe::{egui, glow};
+use eframe::{egui, egui_glow, glow};
 use std::*;
 
 struct App {
@@ -110,7 +110,10 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "mimizu",
         eframe::NativeOptions {
-            vsync: false,
+            glow_options: egui_glow::GlowConfiguration {
+                vsync: false,
+                ..Default::default()
+            },
             ..Default::default()
         },
         Box::new(move |cc| Ok(Box::new(App::new(cc, b"mimizu\0")?))),

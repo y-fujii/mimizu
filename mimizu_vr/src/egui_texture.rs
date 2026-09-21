@@ -72,7 +72,7 @@ impl EguiTexture {
             )),
             ..Default::default()
         };
-        let out = self.context.run_ui(input, run_ui);
+        let mut out = self.context.run_ui(input, run_ui);
         let prims = self.context.tessellate(out.shapes, ppp);
 
         unsafe {
@@ -82,7 +82,7 @@ impl EguiTexture {
             gl.clear(glow::COLOR_BUFFER_BIT);
         }
         self.painter
-            .paint_and_update_textures(self.size, ppp, &prims, &out.textures_delta);
+            .paint_and_update_textures(self.size, ppp, &prims, &mut out.textures_delta);
         unsafe { self.painter.gl().bind_framebuffer(glow::FRAMEBUFFER, None) };
     }
 
